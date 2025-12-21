@@ -26,7 +26,6 @@ const COLORS = {
 export default function GameScreen({ route, navigation }) {
   const { playerCount } = route.params;
   const [players, setPlayers] = useState([]);
-  const [syncMode, setSyncMode] = useState(false);
   const [duelMode, setDuelMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
   
@@ -409,17 +408,6 @@ export default function GameScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.syncToggleContainer}>
-        <TouchableOpacity
-          style={[styles.syncButton, syncMode && styles.syncButtonActive]}
-          onPress={() => setSyncMode(!syncMode)}
-        >
-          <Text style={[styles.syncButtonText, syncMode && styles.syncButtonTextActive]}>
-            Sync: {syncMode ? 'ON' : 'OFF'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.gameGrid}>
         {/* Top Row - Players facing from top */}
         <View style={styles.row}>
@@ -447,34 +435,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
-  },
-  syncToggleContainer: {
-    position: 'absolute',
-    top: 5,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  syncButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#333',
-    borderWidth: 2,
-    borderColor: '#666',
-  },
-  syncButtonActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  syncButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  syncButtonTextActive: {
-    color: '#fff',
   },
   gameGrid: {
     flex: 1,
