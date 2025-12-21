@@ -24,11 +24,16 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.tragiclife.app",
-      "permissions": []
+      "permissions": [],
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "18d65e65-c7d5-4beb-ae41-36e3ccc34d66"
+      }
     }
   }
 }
-
