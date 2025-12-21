@@ -34,6 +34,9 @@ export default function GameScreen({ route, navigation }) {
   const gradientAnimations = useRef(
     Array.from({ length: 6 }, () => new Animated.Value(0))
   ).current;
+  
+  // Ref to store timeout ID for clearing feedback
+  const feedbackTimeoutRef = useRef(null);
 
   // Lock to landscape orientation when screen is focused
   useFocusEffect(
@@ -56,10 +59,39 @@ export default function GameScreen({ route, navigation }) {
     setPlayers(initialPlayers);
   }, [playerCount]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const adjustLife = (playerId, amount) => {
-    // Show feedback popup
-    setLifeChangeFeedback({ playerId, amount });
-    setTimeout(() => setLifeChangeFeedback({ playerId: null, amount: 0 }), 800);
+    // Clear existing timeout if any
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+
+    // Update cumulative feedback
+    setLifeChangeFeedback(prev => {
+      // If same player and same direction (both positive or both negative), accumulate
+      if (prev.playerId === playerId && 
+          ((prev.amount > 0 && amount > 0) || (prev.amount < 0 && amount < 0))) {
+        const newAmount = prev.amount + amount;
+        return { playerId, amount: newAmount };
+      } else {
+        // Different player or different direction - start fresh
+        return { playerId, amount };
+      }
+    });
+
+    // Set timeout to reset feedback after user stops clicking
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setLifeChangeFeedback({ playerId: null, amount: 0 });
+      feedbackTimeoutRef.current = null;
+    }, 800);
 
     setPlayers(players.map(p => {
       if (p.id === playerId) {
