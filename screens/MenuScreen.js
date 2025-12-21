@@ -6,9 +6,18 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function MenuScreen({ navigation }) {
   const [playerCount, setPlayerCount] = useState(4);
+
+  // Lock to landscape orientation when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    }, [])
+  );
 
   const handleStartGame = () => {
     navigation.navigate('Game', { playerCount });

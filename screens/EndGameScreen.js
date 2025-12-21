@@ -7,6 +7,8 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { VictoryPie } from 'victory-native';
 
 const COLORS = {
@@ -20,6 +22,13 @@ const COLORS = {
 
 export default function EndGameScreen({ route, navigation }) {
   const { gameData } = route.params;
+
+  // Allow all orientations when screen is focused (so user can rotate to portrait for easier reading)
+  useFocusEffect(
+    React.useCallback(() => {
+      ScreenOrientation.unlockAsync();
+    }, [])
+  );
 
   // Distinct colors for each player in pie charts
   const PLAYER_CHART_COLORS = [

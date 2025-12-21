@@ -4,12 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   Modal,
   Dimensions,
   Animated,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -33,6 +34,13 @@ export default function GameScreen({ route, navigation }) {
   const gradientAnimations = useRef(
     Array.from({ length: 6 }, () => new Animated.Value(0))
   ).current;
+
+  // Lock to landscape orientation when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    }, [])
+  );
 
   useEffect(() => {
     const initialPlayers = Array.from({ length: playerCount }, (_, i) => ({
@@ -407,7 +415,7 @@ export default function GameScreen({ route, navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.gameGrid}>
         {/* Top Row - Players facing from top */}
         <View style={styles.row}>
@@ -427,7 +435,7 @@ export default function GameScreen({ route, navigation }) {
         <Text style={styles.endGameButtonText}>End Game</Text>
       </TouchableOpacity>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -435,6 +443,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a1a1a',
+    width: '100%',
+    height: '100%',
   },
   gameGrid: {
     flex: 1,
