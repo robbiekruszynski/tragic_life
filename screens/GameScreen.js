@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -38,10 +39,15 @@ export default function GameScreen({ route, navigation }) {
   // Ref to store timeout ID for clearing feedback
   const feedbackTimeoutRef = useRef(null);
 
-  // Lock to landscape orientation when screen is focused
+  // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      activateKeepAwake(); // Keep screen awake while game is active
+      
+      return () => {
+        deactivateKeepAwake(); // Allow screen to sleep when leaving game screen
+      };
     }, [])
   );
 
@@ -129,7 +135,6 @@ export default function GameScreen({ route, navigation }) {
       return p;
     }));
   };
-
 
   const handleEndGame = () => {
     const gameData = players.map(p => ({
@@ -450,7 +455,12 @@ export default function GameScreen({ route, navigation }) {
       <View style={styles.gameGrid}>
         {/* Top Row - Players facing from top */}
         <View style={styles.row}>
-          {topPlayers.map((player) => renderPlayerCard(player, true))}
+          {topPlayers.map((player, index) => (
+            <React.Fragment key={player.id}>
+              {index > 0 && <View style={styles.verticalSpacer} />}
+              {renderPlayerCard(player, true)}
+            </React.Fragment>
+          ))}
         </View>
 
         {/* Center spacer (optional, for visual separation) */}
@@ -458,7 +468,12 @@ export default function GameScreen({ route, navigation }) {
 
         {/* Bottom Row - Players facing from bottom */}
         <View style={styles.row}>
-          {bottomPlayers.map((player) => renderPlayerCard(player, false))}
+          {bottomPlayers.map((player, index) => (
+            <React.Fragment key={player.id}>
+              {index > 0 && <View style={styles.verticalSpacer} />}
+              {renderPlayerCard(player, false)}
+            </React.Fragment>
+          ))}
         </View>
       </View>
 
@@ -494,6 +509,11 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
     marginVertical: 0,
+  },
+  verticalSpacer: {
+    width: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 0,
   },
   playerCard: {
     flex: 1,
@@ -661,7 +681,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    borderWidth: 2,
+    borderWidth: 0,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
