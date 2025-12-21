@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   commanderToggleActive: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
   },
   commanderToggleText: {
     fontSize: 10,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   duelToggleActive: {
-    backgroundColor: 'rgba(76, 175, 80, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.8)',
   },
   duelToggleText: {
     fontSize: 10,

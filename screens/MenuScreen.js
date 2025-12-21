@@ -18,7 +18,6 @@ export default function MenuScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Tragic Life</Text>
-        <Text style={styles.subtitle}>Commander Life Counter</Text>
 
         <View style={styles.playerSelection}>
           <Text style={styles.label}>Declare the amount of athletes</Text>
