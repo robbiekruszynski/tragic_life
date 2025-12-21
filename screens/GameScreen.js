@@ -76,13 +76,12 @@ export default function GameScreen({ route, navigation }) {
 
     // Update cumulative feedback
     setLifeChangeFeedback(prev => {
-      // If same player and same direction (both positive or both negative), accumulate
-      if (prev.playerId === playerId && 
-          ((prev.amount > 0 && amount > 0) || (prev.amount < 0 && amount < 0))) {
+      // If same player, continue accumulating (including opposite direction)
+      if (prev.playerId === playerId) {
         const newAmount = prev.amount + amount;
         return { playerId, amount: newAmount };
       } else {
-        // Different player or different direction - start fresh
+        // Different player - start fresh
         return { playerId, amount };
       }
     });
