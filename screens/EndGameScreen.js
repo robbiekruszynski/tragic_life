@@ -21,26 +21,38 @@ const COLORS = {
 export default function EndGameScreen({ route, navigation }) {
   const { gameData } = route.params;
 
-  // Prepare data for pie charts - filter out zero values
+  // Distinct colors for each player in pie charts
+  const PLAYER_CHART_COLORS = [
+    '#667eea', // Player 1 - Blue/Purple
+    '#50C878', // Player 2 - Green
+    '#FF8C42', // Player 3 - Orange
+    '#9B59B6', // Player 4 - Purple
+    '#FFD93D', // Player 5 - Yellow
+    '#00CED1', // Player 6 - Cyan
+  ];
+
+  // Prepare data for pie charts - filter out zero values and add labels with values
   const mainLifeData = gameData
     .filter(player => player.mainLifeDamage > 0)
-    .map((player) => {
-      const firstColor = player.colors && player.colors.length > 0 ? player.colors[0] : 'grey';
+    .map((player, index) => {
+      const colorValue = PLAYER_CHART_COLORS[index % PLAYER_CHART_COLORS.length];
       return {
         x: player.name,
         y: player.mainLifeDamage,
-        color: COLORS[firstColor]?.color || COLORS.grey.color,
+        color: colorValue,
+        label: `${player.name}\n${player.mainLifeDamage}`,
       };
     });
 
   const commanderData = gameData
     .filter(player => player.commanderDamage > 0)
-    .map((player) => {
-      const firstColor = player.colors && player.colors.length > 0 ? player.colors[0] : 'grey';
+    .map((player, index) => {
+      const colorValue = PLAYER_CHART_COLORS[index % PLAYER_CHART_COLORS.length];
       return {
         x: player.name,
         y: player.commanderDamage,
-        color: COLORS[firstColor]?.color || COLORS.grey.color,
+        color: colorValue,
+        label: `${player.name}\n${player.commanderDamage}`,
       };
     });
 
@@ -55,25 +67,38 @@ export default function EndGameScreen({ route, navigation }) {
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>Main Life Damage</Text>
           {totalMainLifeDamage > 0 && mainLifeData.length > 0 ? (
-            <VictoryPie
-              data={mainLifeData}
-              colorScale={mainLifeData.map(item => item.color)}
-              width={350}
-              height={350}
-              labelRadius={({ innerRadius }) => innerRadius + 50}
-              innerRadius={50}
-              style={{
-                labels: {
-                  fill: '#fff',
-                  fontSize: 16,
-                  fontWeight: 'bold',
-                },
-                data: {
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                },
-              }}
-            />
+            <>
+              <VictoryPie
+                data={mainLifeData}
+                colorScale={mainLifeData.map(item => item.color)}
+                width={400}
+                height={400}
+                innerRadius={80}
+                padAngle={5}
+                cornerRadius={5}
+                style={{
+                  labels: {
+                    fill: 'transparent',
+                  },
+                  data: {
+                    stroke: '#fff',
+                    strokeWidth: 4,
+                    strokeOpacity: 1,
+                  },
+                }}
+              />
+              <View style={styles.legendContainer}>
+                {mainLifeData.map((item, index) => {
+                  const percentage = totalMainLifeDamage > 0 ? ((item.y / totalMainLifeDamage) * 100).toFixed(1) : 0;
+                  return (
+                    <View key={index} style={styles.legendItem}>
+                      <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                      <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
           ) : (
             <View style={styles.noDataContainer}>
               <Text style={styles.noDataText}>No main life damage taken</Text>
@@ -84,25 +109,38 @@ export default function EndGameScreen({ route, navigation }) {
         <View style={styles.chartContainer}>
           <Text style={styles.chartTitle}>Commander Damage</Text>
           {totalCommanderDamage > 0 && commanderData.length > 0 ? (
-            <VictoryPie
-              data={commanderData}
-              colorScale={commanderData.map(item => item.color)}
-              width={350}
-              height={350}
-              labelRadius={({ innerRadius }) => innerRadius + 50}
-              innerRadius={50}
-              style={{
-                labels: {
-                  fill: '#fff',
-                  fontSize: 16,
-                  fontWeight: 'bold',
-                },
-                data: {
-                  stroke: '#fff',
-                  strokeWidth: 2,
-                },
-              }}
-            />
+            <>
+              <VictoryPie
+                data={commanderData}
+                colorScale={commanderData.map(item => item.color)}
+                width={400}
+                height={400}
+                innerRadius={80}
+                padAngle={5}
+                cornerRadius={5}
+                style={{
+                  labels: {
+                    fill: 'transparent',
+                  },
+                  data: {
+                    stroke: '#fff',
+                    strokeWidth: 4,
+                    strokeOpacity: 1,
+                  },
+                }}
+              />
+              <View style={styles.legendContainer}>
+                {commanderData.map((item, index) => {
+                  const percentage = totalCommanderDamage > 0 ? ((item.y / totalCommanderDamage) * 100).toFixed(1) : 0;
+                  return (
+                    <View key={index} style={styles.legendItem}>
+                      <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                      <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </>
           ) : (
             <View style={styles.noDataContainer}>
               <Text style={styles.noDataText}>No commander damage taken</Text>
@@ -112,32 +150,26 @@ export default function EndGameScreen({ route, navigation }) {
 
         <View style={styles.statsContainer}>
           {gameData.map((player, index) => {
-            const playerColors = player.colors ? (Array.isArray(player.colors) ? player.colors : [player.colors]) : ['grey'];
-            const firstColor = playerColors.length > 0 ? playerColors[0] : 'grey';
-            const colorInfo = COLORS[firstColor] || COLORS.grey;
+            // Use the same colors as pie charts for consistency
+            const playerColor = PLAYER_CHART_COLORS[index % PLAYER_CHART_COLORS.length];
             return (
               <View
                 key={index}
                 style={[
                   styles.statCard,
-                  { backgroundColor: colorInfo.color },
+                  { backgroundColor: playerColor },
                 ]}
               >
-                <Text style={[styles.statName, { color: colorInfo.textColor }]}>
+                <Text style={[styles.statName, { color: '#fff' }]}>
                   {player.name}
                 </Text>
-                {playerColors.length > 0 && (
-                  <Text style={[styles.statText, { color: colorInfo.textColor, fontSize: 12 }]}>
-                    Colors: {playerColors.map(c => COLORS[c]?.name || c).join(', ')}
-                  </Text>
-                )}
-                <Text style={[styles.statText, { color: colorInfo.textColor }]}>
+                <Text style={[styles.statText, { color: '#fff' }]}>
                   Main Life Damage: {player.mainLifeDamage}
                 </Text>
-                <Text style={[styles.statText, { color: colorInfo.textColor }]}>
+                <Text style={[styles.statText, { color: '#fff' }]}>
                   Commander Damage: {player.commanderDamage}
                 </Text>
-                <Text style={[styles.statText, { color: colorInfo.textColor }]}>
+                <Text style={[styles.statText, { color: '#fff' }]}>
                   Total Damage: {player.mainLifeDamage + player.commanderDamage}
                 </Text>
               </View>
@@ -183,12 +215,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   noDataContainer: {
-    width: 350,
-    height: 350,
+    width: 400,
+    height: 400,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#2a2a2a',
-    borderRadius: 175,
+    borderRadius: 200,
   },
   noDataText: {
     color: '#aaa',
@@ -201,19 +233,26 @@ const styles = StyleSheet.create({
   },
   statCard: {
     padding: 20,
-    borderRadius: 10,
-    marginBottom: 15,
-    borderWidth: 2,
+    borderRadius: 12,
+    marginBottom: 18,
+    borderWidth: 3,
     borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
   },
   statName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
+    textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
   },
   statText: {
-    fontSize: 16,
-    marginBottom: 5,
+    fontSize: 17,
+    marginBottom: 8,
+    textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
   },
   button: {
     backgroundColor: '#4CAF50',
@@ -226,6 +265,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 20,
+    gap: 15,
+    paddingHorizontal: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 8,
+  },
+  legendColor: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    marginRight: 8,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  legendText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
