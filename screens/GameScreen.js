@@ -443,7 +443,7 @@ export default function GameScreen({ route, navigation }) {
                 </Text>
               </View>
             )}
-            <View style={styles.lifeValueContainer} pointerEvents="none">
+            <View style={[styles.lifeValueContainer, isTop && styles.lifeValueContainerTop]} pointerEvents="none">
               <Text style={[styles.lifeValue, textStyle]} pointerEvents="none">
                 {player.showCommander ? player.commanderDamage : player.life}
               </Text>
@@ -632,9 +632,10 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     pointerEvents: 'none',
-    paddingTop: 0,
+    paddingTop: 50,
     paddingBottom: 80,
     zIndex: 1,
+    overflow: 'visible',
   },
   buttonContainer: {
     position: 'absolute',
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
   topSectionRotated: {
     alignItems: 'flex-start',
     alignSelf: 'flex-start',
-    top: 5,
+    top: 5 - (height * 0.02),
     bottom: 'auto',
     left: 10,
     right: 'auto',
@@ -714,9 +715,11 @@ const styles = StyleSheet.create({
     minHeight: 120,
     paddingTop: 0,
     paddingBottom: 0,
+    overflow: 'visible',
   },
   lifeContainerTop: {
     top: -(height * 0.03),
+    paddingTop: 50,
   },
   lifeValueContainer: {
     alignItems: 'center',
@@ -725,6 +728,9 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
     overflow: 'visible',
     paddingTop: 0,
+  },
+  lifeValueContainerTop: {
+    marginTop: -30 - (height * 0.05),
   },
   lifeValue: {
     fontSize: Math.min(width * 0.25, height * 0.3),
