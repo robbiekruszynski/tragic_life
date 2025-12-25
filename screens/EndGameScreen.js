@@ -6,11 +6,14 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { VictoryPie } from 'victory-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop, ClipPath, Circle } from 'react-native-svg';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const COLORS = {
   white: { name: 'White', color: '#F5F5F5', textColor: '#000' },
@@ -75,24 +78,88 @@ export default function EndGameScreen({ route, navigation }) {
     }
   };
 
-  // Get a representative color for pie charts (use first color or average)
-  const getChartColor = (selectedColors) => {
-    if (!selectedColors || selectedColors.length === 0) {
-      return COLORS.grey.color;
-    }
-    const colorArray = Array.isArray(selectedColors) ? selectedColors : [selectedColors];
-    return COLORS[colorArray[0]]?.color || COLORS.grey.color;
+  // Custom Gradient Pie Chart Component
+  const GradientPieChart = ({ data, size = 400, innerRadius = 80, padAngle = 5 }) => {
+    const total = data.reduce((sum, item) => sum + item.y, 0);
+    const center = size / 2;
+    const outerRadius = size / 2;
+    let currentAngle = -90; // Start at top
+    
+    const createPath = (startAngle, endAngle, innerR, outerR) => {
+      const startAngleRad = (startAngle * Math.PI) / 180;
+      const endAngleRad = (endAngle * Math.PI) / 180;
+      
+      const x1 = center + innerR * Math.cos(startAngleRad);
+      const y1 = center + innerR * Math.sin(startAngleRad);
+      const x2 = center + outerR * Math.cos(startAngleRad);
+      const y2 = center + outerR * Math.sin(startAngleRad);
+      const x3 = center + outerR * Math.cos(endAngleRad);
+      const y3 = center + outerR * Math.sin(endAngleRad);
+      const x4 = center + innerR * Math.cos(endAngleRad);
+      const y4 = center + innerR * Math.sin(endAngleRad);
+      
+      const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+      
+      return `M ${x1} ${y1} L ${x2} ${y2} A ${outerR} ${outerR} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerR} ${innerR} 0 ${largeArc} 0 ${x1} ${y1} Z`;
+    };
+    
+    return (
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          <Defs>
+            {data.map((item, index) => {
+              const gradientColors = getGradientColors(item.colors || []);
+              const gradientId = `gradient-${index}`;
+              return (
+                <SvgLinearGradient key={gradientId} id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+                  {gradientColors.map((color, colorIndex) => (
+                    <Stop
+                      key={colorIndex}
+                      offset={`${gradientColors.length > 1 ? (colorIndex / (gradientColors.length - 1)) * 100 : 0}%`}
+                      stopColor={color}
+                      stopOpacity="1"
+                    />
+                  ))}
+                </SvgLinearGradient>
+              );
+            })}
+          </Defs>
+          {data.map((item, index) => {
+            const percentage = (item.y / total) * 100;
+            const angle = (percentage / 100) * 360;
+            const startAngle = currentAngle;
+            const endAngle = currentAngle + angle;
+            const adjustedStartAngle = startAngle + padAngle / 2;
+            const adjustedEndAngle = endAngle - padAngle / 2;
+            
+            const path = createPath(adjustedStartAngle, adjustedEndAngle, innerRadius, outerRadius);
+            const gradientId = `gradient-${index}`;
+            
+            currentAngle = endAngle;
+            
+            return (
+              <Path
+                key={index}
+                d={path}
+                fill={`url(#${gradientId})`}
+                stroke="#fff"
+                strokeWidth={4}
+              />
+            );
+          })}
+        </Svg>
+      </View>
+    );
   };
 
   // Prepare data for pie charts - filter out zero values and add labels with values
   const mainLifeData = gameData
     .filter(player => player.mainLifeDamage > 0)
     .map((player) => {
-      const colorValue = getChartColor(player.colors);
       return {
         x: player.name,
         y: player.mainLifeDamage,
-        color: colorValue,
+        colors: player.colors,
         label: `${player.name}\n${player.mainLifeDamage}`,
       };
     });
@@ -100,11 +167,10 @@ export default function EndGameScreen({ route, navigation }) {
   const commanderData = gameData
     .filter(player => player.commanderDamage > 0)
     .map((player) => {
-      const colorValue = getChartColor(player.colors);
       return {
         x: player.name,
         y: player.commanderDamage,
-        color: colorValue,
+        colors: player.colors,
         label: `${player.name}\n${player.commanderDamage}`,
       };
     });
@@ -121,31 +187,19 @@ export default function EndGameScreen({ route, navigation }) {
           <Text style={styles.chartTitle}>Main Life Damage</Text>
           {totalMainLifeDamage > 0 && mainLifeData.length > 0 ? (
             <>
-              <VictoryPie
-                data={mainLifeData}
-                colorScale={mainLifeData.map(item => item.color)}
-                width={400}
-                height={400}
-                innerRadius={80}
-                padAngle={5}
-                cornerRadius={5}
-                style={{
-                  labels: {
-                    fill: 'transparent',
-                  },
-                  data: {
-                    stroke: '#fff',
-                    strokeWidth: 4,
-                    strokeOpacity: 1,
-                  },
-                }}
-              />
+              <GradientPieChart data={mainLifeData} size={400} innerRadius={80} padAngle={5} />
               <View style={styles.legendContainer}>
                 {mainLifeData.map((item, index) => {
                   const percentage = totalMainLifeDamage > 0 ? ((item.y / totalMainLifeDamage) * 100).toFixed(1) : 0;
+                  const gradientColors = getGradientColors(item.colors);
                   return (
                     <View key={index} style={styles.legendItem}>
-                      <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                      <LinearGradient
+                        colors={gradientColors}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.legendColor}
+                      />
                       <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
                     </View>
                   );
@@ -163,31 +217,19 @@ export default function EndGameScreen({ route, navigation }) {
           <Text style={styles.chartTitle}>Commander Damage</Text>
           {totalCommanderDamage > 0 && commanderData.length > 0 ? (
             <>
-              <VictoryPie
-                data={commanderData}
-                colorScale={commanderData.map(item => item.color)}
-                width={400}
-                height={400}
-                innerRadius={80}
-                padAngle={5}
-                cornerRadius={5}
-                style={{
-                  labels: {
-                    fill: 'transparent',
-                  },
-                  data: {
-                    stroke: '#fff',
-                    strokeWidth: 4,
-                    strokeOpacity: 1,
-                  },
-                }}
-              />
+              <GradientPieChart data={commanderData} size={400} innerRadius={80} padAngle={5} />
               <View style={styles.legendContainer}>
                 {commanderData.map((item, index) => {
                   const percentage = totalCommanderDamage > 0 ? ((item.y / totalCommanderDamage) * 100).toFixed(1) : 0;
+                  const gradientColors = getGradientColors(item.colors);
                   return (
                     <View key={index} style={styles.legendItem}>
-                      <View style={[styles.legendColor, { backgroundColor: item.color }]} />
+                      <LinearGradient
+                        colors={gradientColors}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.legendColor}
+                      />
                       <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
                     </View>
                   );
