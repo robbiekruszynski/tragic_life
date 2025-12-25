@@ -702,7 +702,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     position: 'absolute',
-    top: 20,
+    top: Math.max(0, 20 - (height * 0.03)),
     left: 0,
     right: 0,
     paddingHorizontal: 10,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   lifeContainerTop: {
-    top: 0,
+    top: -(height * 0.03),
   },
   lifeValueContainer: {
     alignItems: 'center',
@@ -727,12 +727,12 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   lifeValue: {
-    fontSize: Math.min(width * 0.2, height * 0.25),
+    fontSize: Math.min(width * 0.25, height * 0.3),
     fontWeight: 'bold',
     textAlign: 'center',
     includeFontPadding: false,
     textAlignVertical: 'top',
-    lineHeight: Math.min(width * 0.2, height * 0.25) * 1.1,
+    lineHeight: Math.min(width * 0.25, height * 0.3) * 1.1,
     overflow: 'visible',
     paddingTop: 0,
     marginTop: 0,
