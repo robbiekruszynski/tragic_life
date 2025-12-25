@@ -38,6 +38,8 @@ export default function GameScreen({ route, navigation }) {
   
   // Ref to store timeout ID for clearing feedback
   const feedbackTimeoutRef = useRef(null);
+  // Ref to track current feedback state for sign change detection
+  const currentFeedbackRef = useRef({ playerId: null, amount: 0 });
 
   // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
@@ -80,23 +82,36 @@ export default function GameScreen({ route, navigation }) {
       clearTimeout(feedbackTimeoutRef.current);
     }
 
-    // Update cumulative feedback
-    setLifeChangeFeedback(prev => {
-      // If same player, continue accumulating (including opposite direction)
-      if (prev.playerId === playerId) {
-        const newAmount = prev.amount + amount;
-        return { playerId, amount: newAmount };
-      } else {
-        // Different player - start fresh
-        return { playerId, amount };
+    // Check for sign change using ref (synchronous check)
+    const currentFeedback = currentFeedbackRef.current;
+    let signChanged = false;
+    let newAmount;
+    
+    if (currentFeedback.playerId === playerId) {
+      const prevAmount = currentFeedback.amount;
+      newAmount = prevAmount + amount;
+      // Check if sign changed (crossed zero)
+      if ((prevAmount > 0 && newAmount <= 0) || (prevAmount < 0 && newAmount >= 0)) {
+        signChanged = true;
       }
-    });
+    } else {
+      newAmount = amount;
+    }
+
+    // Update ref synchronously
+    currentFeedbackRef.current = { playerId, amount: newAmount };
+
+    // Update state
+    setLifeChangeFeedback({ playerId, amount: newAmount });
 
     // Set timeout to reset feedback after user stops clicking
+    // Use 5 seconds for all adjustments
+    const timeoutDuration = 5000;
     feedbackTimeoutRef.current = setTimeout(() => {
       setLifeChangeFeedback({ playerId: null, amount: 0 });
+      currentFeedbackRef.current = { playerId: null, amount: 0 };
       feedbackTimeoutRef.current = null;
-    }, 800);
+    }, timeoutDuration);
 
     setPlayers(players.map(p => {
       if (p.id === playerId) {
