@@ -48,7 +48,7 @@ export default function MenuScreen({ navigation }) {
         </View>
 
         <TouchableOpacity style={styles.startButton} onPress={handleStartGame}>
-          <Text style={styles.startButtonText}>Start Game</Text>
+          <Text style={styles.startButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

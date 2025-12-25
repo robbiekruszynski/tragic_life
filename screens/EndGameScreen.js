@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,14 @@ import {
   SafeAreaView,
   ScrollView,
   Dimensions,
+  Share,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop, ClipPath, Circle } from 'react-native-svg';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const COLORS = {
   white: { name: 'White', color: '#F5F5F5', textColor: '#000' },
@@ -26,6 +27,7 @@ const COLORS = {
 
 export default function EndGameScreen({ route, navigation }) {
   const { gameData } = route.params;
+  const [dimensions, setDimensions] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
 
   // Allow all orientations when screen is focused (so user can rotate to portrait for easier reading)
   useFocusEffect(
@@ -33,6 +35,34 @@ export default function EndGameScreen({ route, navigation }) {
       ScreenOrientation.unlockAsync();
     }, [])
   );
+
+  // Update dimensions on orientation change
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions({ width: window.width, height: window.height });
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  // Calculate responsive pie chart size
+  const getPieChartSize = () => {
+    const isPortrait = dimensions.height > dimensions.width;
+    const maxSize = Math.min(dimensions.width - 40, isPortrait ? dimensions.height * 0.4 : 400);
+    return Math.max(250, maxSize); // Minimum 250, but responsive to screen
+  };
+
+  // Share game data
+  const shareGameData = async () => {
+    try {
+      const dataString = JSON.stringify(gameData, null, 2);
+      await Share.share({
+        message: `Tragic Life Game Data:\n\n${dataString}`,
+        title: 'Tragic Life Game Data',
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
 
   // Generate gradient colors from selected colors (same logic as GameScreen)
   const getGradientColors = (selectedColors) => {
@@ -79,7 +109,7 @@ export default function EndGameScreen({ route, navigation }) {
   };
 
   // Custom Gradient Pie Chart Component
-  const GradientPieChart = ({ data, size = 400, innerRadius = 80, padAngle = 5 }) => {
+  const GradientPieChart = ({ data, size, innerRadius, padAngle = 5 }) => {
     const total = data.reduce((sum, item) => sum + item.y, 0);
     const center = size / 2;
     const outerRadius = size / 2;
@@ -187,7 +217,12 @@ export default function EndGameScreen({ route, navigation }) {
           <Text style={styles.chartTitle}>Main Life Damage</Text>
           {totalMainLifeDamage > 0 && mainLifeData.length > 0 ? (
             <>
-              <GradientPieChart data={mainLifeData} size={400} innerRadius={80} padAngle={5} />
+              <GradientPieChart 
+                data={mainLifeData} 
+                size={getPieChartSize()} 
+                innerRadius={getPieChartSize() * 0.2} 
+                padAngle={5} 
+              />
               <View style={styles.legendContainer}>
                 {mainLifeData.map((item, index) => {
                   const percentage = totalMainLifeDamage > 0 ? ((item.y / totalMainLifeDamage) * 100).toFixed(1) : 0;
@@ -217,7 +252,12 @@ export default function EndGameScreen({ route, navigation }) {
           <Text style={styles.chartTitle}>Commander Damage</Text>
           {totalCommanderDamage > 0 && commanderData.length > 0 ? (
             <>
-              <GradientPieChart data={commanderData} size={400} innerRadius={80} padAngle={5} />
+              <GradientPieChart 
+                data={commanderData} 
+                size={getPieChartSize()} 
+                innerRadius={getPieChartSize() * 0.2} 
+                padAngle={5} 
+              />
               <View style={styles.legendContainer}>
                 {commanderData.map((item, index) => {
                   const percentage = totalCommanderDamage > 0 ? ((item.y / totalCommanderDamage) * 100).toFixed(1) : 0;
@@ -276,12 +316,20 @@ export default function EndGameScreen({ route, navigation }) {
           })}
         </View>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Menu')}
-        >
-          <Text style={styles.buttonText}>New Game</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.buttonSecondary]}
+            onPress={shareGameData}
+          >
+            <Text style={styles.buttonText}>Share Data</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => navigation.navigate('Menu')}
+          >
+            <Text style={styles.buttonText}>New Game</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -314,8 +362,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   noDataContainer: {
-    width: 400,
-    height: 400,
+    width: '100%',
+    aspectRatio: 1,
+    maxWidth: 400,
+    maxHeight: 400,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#2a2a2a',
@@ -367,17 +417,29 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
   button: {
     backgroundColor: '#4CAF50',
     paddingHorizontal: 40,
     paddingVertical: 15,
     borderRadius: 10,
-    marginBottom: 20,
+    minWidth: 120,
+  },
+  buttonSecondary: {
+    backgroundColor: '#2196F3',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   legendContainer: {
     flexDirection: 'row',
