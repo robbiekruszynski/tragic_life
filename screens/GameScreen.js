@@ -433,16 +433,22 @@ export default function GameScreen({ route, navigation }) {
               <Text style={[styles.playerName, textStyle]} pointerEvents="none">{player.name}</Text>
             </View>
           </View>
+          
+          {/* Life Adjustment Feedback - Opposite side of name */}
+          {showFeedback && (
+            <View style={[
+              styles.feedbackPopup, 
+              isTop && styles.feedbackPopupTop,
+              lifeChangeFeedback.amount > 0 ? styles.feedbackPositive : styles.feedbackNegative
+            ]} pointerEvents="none">
+              <Text style={styles.feedbackText} pointerEvents="none">
+                {lifeChangeFeedback.amount > 0 ? '+' : ''}{lifeChangeFeedback.amount}
+              </Text>
+            </View>
+          )}
 
           {/* Life/Commander Counter - Right below name */}
           <View style={[styles.lifeContainer, isTop && styles.lifeContainerTop]} pointerEvents="none">
-            {showFeedback && (
-              <View style={[styles.feedbackPopup, lifeChangeFeedback.amount > 0 ? styles.feedbackPositive : styles.feedbackNegative]} pointerEvents="none">
-                <Text style={styles.feedbackText} pointerEvents="none">
-                  {lifeChangeFeedback.amount > 0 ? '+' : ''}{lifeChangeFeedback.amount}
-                </Text>
-              </View>
-            )}
             <View style={[styles.lifeValueContainer, isTop && styles.lifeValueContainerTop]} pointerEvents="none">
               <Text style={[styles.lifeValue, textStyle]} pointerEvents="none">
                 {player.showCommander ? player.commanderDamage : player.life}
@@ -661,6 +667,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: 0,
     paddingVertical: 2,
+    position: 'relative',
   },
   playerName: {
     fontSize: 16,
@@ -680,6 +687,7 @@ const styles = StyleSheet.create({
     top: 5,
     right: 10,
     zIndex: 2,
+    flexDirection: 'column',
   },
   topSectionRotated: {
     alignItems: 'flex-start',
@@ -692,6 +700,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     marginRight: 0,
     marginLeft: 10,
+    flexDirection: 'column',
   },
   nameRow: {
     flexDirection: 'row',
@@ -719,7 +728,8 @@ const styles = StyleSheet.create({
   },
   lifeContainerTop: {
     top: -(height * 0.03),
-    paddingTop: 50,
+    paddingTop: 60,
+    paddingBottom: 0,
   },
   lifeValueContainer: {
     alignItems: 'center',
@@ -780,13 +790,21 @@ const styles = StyleSheet.create({
   },
   feedbackPopup: {
     position: 'absolute',
-    top: -40,
-    alignSelf: 'center',
+    top: 5,
+    left: 10,
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
     zIndex: 100,
     borderWidth: 2,
+    minWidth: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackPopupTop: {
+    left: 'auto',
+    right: 10,
   },
   feedbackPositive: {
     backgroundColor: '#4CAF50',
