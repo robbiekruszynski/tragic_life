@@ -367,9 +367,9 @@ const styles = StyleSheet.create({
   nameContainerWrapperTop: {
     top: 'auto',
     bottom: 5,
-    right: 'auto',
-    left: 10,
-    alignItems: 'flex-start',
+    right: 10,
+    left: 'auto',
+    alignItems: 'flex-end',
   },
   nameContainerInner: {
     pointerEvents: 'auto',
