@@ -26,7 +26,7 @@ const COLORS = {
 };
 
 export default function GameScreen({ route, navigation }) {
-  const { playerCount } = route.params;
+  const { playerCount, players: initialPlayers } = route.params;
   const [players, setPlayers] = useState([]);
   const [duelMode, setDuelMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
@@ -54,18 +54,32 @@ export default function GameScreen({ route, navigation }) {
   );
 
   useEffect(() => {
-    const initialPlayers = Array.from({ length: playerCount }, (_, i) => ({
-      id: i,
-      name: `Player ${i + 1}`,
-      life: 40,
-      commanderDamage: 21,
-      showCommander: false,
-      colors: ['grey'], // Default to grey for all players
-      initialLife: 40,
-      initialCommanderDamage: 21,
-    }));
-    setPlayers(initialPlayers);
-  }, [playerCount]);
+    // Use provided players from setup screen, or create default players
+    if (initialPlayers && initialPlayers.length > 0) {
+      const playersWithGameData = initialPlayers.map(p => ({
+        ...p,
+        life: 40,
+        commanderDamage: 21,
+        showCommander: false,
+        initialLife: 40,
+        initialCommanderDamage: 21,
+      }));
+      setPlayers(playersWithGameData);
+    } else {
+      // Fallback: create default players if no setup data
+      const defaultPlayers = Array.from({ length: playerCount || 4 }, (_, i) => ({
+        id: i,
+        name: `Player ${i + 1}`,
+        life: 40,
+        commanderDamage: 21,
+        showCommander: false,
+        colors: ['grey'],
+        initialLife: 40,
+        initialCommanderDamage: 21,
+      }));
+      setPlayers(defaultPlayers);
+    }
+  }, [playerCount, initialPlayers]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -161,52 +175,102 @@ export default function GameScreen({ route, navigation }) {
     navigation.navigate('EndGame', { gameData });
   };
 
-  // Professional multi-color gradient definitions for each player
-  const getPlayerGradientSets = (playerIndex) => {
-    const gradientSets = [
-      // Player 1: Ocean Blue gradient set
-      [
-        ['#667eea', '#764ba2', '#f093fb'],
-        ['#4facfe', '#00f2fe', '#43e97b'],
-        ['#fa709a', '#fee140', '#30cfd0'],
-      ],
-      // Player 2: Forest Green gradient set
-      [
-        ['#11998e', '#38ef7d', '#06beb6'],
-        ['#56ab2f', '#a8e063', '#11998e'],
-        ['#134e5e', '#71b280', '#56ab2f'],
-      ],
-      // Player 3: Sunset Orange gradient set
-      [
-        ['#f093fb', '#f5576c', '#4facfe'],
-        ['#fa709a', '#fee140', '#f093fb'],
-        ['#ff6e7f', '#bfe9ff', '#ffc371'],
-      ],
-      // Player 4: Royal Purple gradient set
-      [
-        ['#a8edea', '#fed6e3', '#667eea'],
-        ['#fbc2eb', '#a6c1ee', '#fbc2eb'],
-        ['#667eea', '#764ba2', '#f093fb'],
-      ],
-      // Player 5: Golden Yellow gradient set
-      [
-        ['#f6d365', '#fda085', '#ffecd2'],
-        ['#ffecd2', '#fcb69f', '#ff9a9e'],
-        ['#ffecd2', '#fbc2eb', '#a8edea'],
-      ],
-      // Player 6: Sky Blue gradient set
-      [
-        ['#89f7fe', '#66a6ff', '#4facfe'],
-        ['#4facfe', '#00f2fe', '#43e97b'],
-        ['#30cfd0', '#330867', '#89f7fe'],
-      ],
-    ];
-    return gradientSets[playerIndex % gradientSets.length] || gradientSets[0];
+  // Generate gradient sets from player's selected colors
+  const getPlayerGradientSets = (player) => {
+    const selectedColors = Array.isArray(player.colors) ? player.colors : [player.colors || 'grey'];
+    const colorValues = selectedColors.map(c => COLORS[c]?.color || COLORS.grey.color);
+    
+    // If no colors or only grey, use default gradient
+    if (selectedColors.length === 0 || (selectedColors.length === 1 && selectedColors[0] === 'grey')) {
+      return [
+        [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color],
+        [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color],
+        [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color],
+      ];
+    }
+    
+    // Helper to lighten a color
+    const lightenColor = (hex, percent) => {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = Math.min(255, (num >> 16) + Math.round((255 - (num >> 16)) * percent));
+      const g = Math.min(255, ((num >> 8) & 0x00FF) + Math.round((255 - ((num >> 8) & 0x00FF)) * percent));
+      const b = Math.min(255, (num & 0x0000FF) + Math.round((255 - (num & 0x0000FF)) * percent));
+      return `#${[r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('')}`;
+    };
+    
+    // Helper to darken a color
+    const darkenColor = (hex, percent) => {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = Math.max(0, (num >> 16) - Math.round((num >> 16) * percent));
+      const g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(((num >> 8) & 0x00FF) * percent));
+      const b = Math.max(0, (num & 0x0000FF) - Math.round((num & 0x0000FF) * percent));
+      return `#${[r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('')}`;
+    };
+    
+    // Generate 3 gradient sets for animation
+    const gradientSets = [];
+    
+    if (colorValues.length === 1) {
+      // Single color: create variations
+      const baseColor = colorValues[0];
+      gradientSets.push([
+        darkenColor(baseColor, 0.2),
+        baseColor,
+        lightenColor(baseColor, 0.2),
+      ]);
+      gradientSets.push([
+        baseColor,
+        lightenColor(baseColor, 0.15),
+        baseColor,
+      ]);
+      gradientSets.push([
+        lightenColor(baseColor, 0.1),
+        baseColor,
+        darkenColor(baseColor, 0.15),
+      ]);
+    } else if (colorValues.length === 2) {
+      // Two colors: create variations
+      const [color1, color2] = colorValues;
+      gradientSets.push([color1, color2, color1]);
+      gradientSets.push([
+        lightenColor(color1, 0.1),
+        color2,
+        darkenColor(color1, 0.1),
+      ]);
+      gradientSets.push([
+        color1,
+        lightenColor(color2, 0.1),
+        color2,
+      ]);
+    } else {
+      // Three or more colors: use all colors and create variations
+      // For animation, we'll create variations that cycle through all colors
+      gradientSets.push(colorValues); // Use all colors
+      
+      // Create variations by slightly adjusting some colors
+      const variation1 = colorValues.map((color, index) => 
+        index % 2 === 0 ? lightenColor(color, 0.1) : color
+      );
+      gradientSets.push(variation1);
+      
+      const variation2 = colorValues.map((color, index) => 
+        index % 2 === 1 ? darkenColor(color, 0.1) : color
+      );
+      gradientSets.push(variation2);
+    }
+    
+    return gradientSets;
   };
 
   // Get animated gradient colors based on animation value
-  const getAnimatedGradient = (playerIndex, animValue) => {
-    const gradientSets = getPlayerGradientSets(playerIndex);
+  const getAnimatedGradient = (player, animValue) => {
+    const gradientSets = getPlayerGradientSets(player);
     const setCount = gradientSets.length;
     const index = Math.floor(animValue * setCount) % setCount;
     const nextIndex = (index + 1) % setCount;
@@ -332,27 +396,26 @@ export default function GameScreen({ route, navigation }) {
 
   // Animated Gradient Card Component (defined inside to access functions)
   const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, gradientAnimation, styles }) => {
-    const [gradientColors, setGradientColors] = useState(
-      getPlayerGradientSets(player.id - 1)[0]
-    );
+    const gradientSets = getPlayerGradientSets(player);
+    const [gradientColors, setGradientColors] = useState(gradientSets[0]);
     const [animationProgress, setAnimationProgress] = useState(0);
 
     useEffect(() => {
       // Update animation progress based on time
       const startTime = Date.now();
-      const duration = 8000 + ((player.id - 1) * 1000);
+      const duration = 8000 + (player.id * 1000);
       
       const interval = setInterval(() => {
         const elapsed = (Date.now() - startTime) % duration;
         const progress = elapsed / duration;
         setAnimationProgress(progress);
         
-        const newColors = getAnimatedGradient(player.id - 1, progress);
+        const newColors = getAnimatedGradient(player, progress);
         setGradientColors(newColors);
       }, 50); // Update every 50ms for smooth animation
       
       return () => clearInterval(interval);
-    }, [player.id]);
+    }, [player.id, player.colors]);
 
     return (
       <LinearGradient
@@ -431,7 +494,7 @@ export default function GameScreen({ route, navigation }) {
                 collapsable={false}
               >
                 <Text style={[styles.duelToggleText, textStyle, isTop && styles.rotatedText]}>
-                  Duel
+                  Dual
                 </Text>
               </TouchableOpacity>
             </View>

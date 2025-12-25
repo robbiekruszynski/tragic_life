@@ -20,7 +20,7 @@ export default function MenuScreen({ navigation }) {
   );
 
   const handleStartGame = () => {
-    navigation.navigate('Game', { playerCount });
+    navigation.navigate('PlayerSetup', { playerCount });
   };
 
   return (

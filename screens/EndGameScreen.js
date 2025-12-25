@@ -10,6 +10,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { VictoryPie } from 'victory-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const COLORS = {
   white: { name: 'White', color: '#F5F5F5', textColor: '#000' },
@@ -30,21 +31,64 @@ export default function EndGameScreen({ route, navigation }) {
     }, [])
   );
 
-  // Distinct colors for each player in pie charts
-  const PLAYER_CHART_COLORS = [
-    '#667eea', // Player 1 - Blue/Purple
-    '#50C878', // Player 2 - Green
-    '#FF8C42', // Player 3 - Orange
-    '#9B59B6', // Player 4 - Purple
-    '#FFD93D', // Player 5 - Yellow
-    '#00CED1', // Player 6 - Cyan
-  ];
+  // Generate gradient colors from selected colors (same logic as GameScreen)
+  const getGradientColors = (selectedColors) => {
+    if (!selectedColors || selectedColors.length === 0) {
+      return [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color];
+    }
+    
+    const colorArray = Array.isArray(selectedColors) ? selectedColors : [selectedColors];
+    const colorValues = colorArray.map(c => COLORS[c]?.color || COLORS.grey.color);
+    
+    // Helper to lighten a color
+    const lightenColor = (hex, percent) => {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = Math.min(255, (num >> 16) + Math.round((255 - (num >> 16)) * percent));
+      const g = Math.min(255, ((num >> 8) & 0x00FF) + Math.round((255 - ((num >> 8) & 0x00FF)) * percent));
+      const b = Math.min(255, (num & 0x0000FF) + Math.round((255 - (num & 0x0000FF)) * percent));
+      return `#${[r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('')}`;
+    };
+    
+    // Helper to darken a color
+    const darkenColor = (hex, percent) => {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = Math.max(0, (num >> 16) - Math.round((num >> 16) * percent));
+      const g = Math.max(0, ((num >> 8) & 0x00FF) - Math.round(((num >> 8) & 0x00FF) * percent));
+      const b = Math.max(0, (num & 0x0000FF) - Math.round((num & 0x0000FF) * percent));
+      return `#${[r, g, b].map(x => {
+        const hex = x.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      }).join('')}`;
+    };
+    
+    if (colorValues.length === 1) {
+      const baseColor = colorValues[0];
+      return [darkenColor(baseColor, 0.2), baseColor, lightenColor(baseColor, 0.2)];
+    } else if (colorValues.length === 2) {
+      return [colorValues[0], colorValues[1], colorValues[0]];
+    } else {
+      // Use all selected colors for the gradient
+      return colorValues;
+    }
+  };
+
+  // Get a representative color for pie charts (use first color or average)
+  const getChartColor = (selectedColors) => {
+    if (!selectedColors || selectedColors.length === 0) {
+      return COLORS.grey.color;
+    }
+    const colorArray = Array.isArray(selectedColors) ? selectedColors : [selectedColors];
+    return COLORS[colorArray[0]]?.color || COLORS.grey.color;
+  };
 
   // Prepare data for pie charts - filter out zero values and add labels with values
   const mainLifeData = gameData
     .filter(player => player.mainLifeDamage > 0)
-    .map((player, index) => {
-      const colorValue = PLAYER_CHART_COLORS[index % PLAYER_CHART_COLORS.length];
+    .map((player) => {
+      const colorValue = getChartColor(player.colors);
       return {
         x: player.name,
         y: player.mainLifeDamage,
@@ -55,8 +99,8 @@ export default function EndGameScreen({ route, navigation }) {
 
   const commanderData = gameData
     .filter(player => player.commanderDamage > 0)
-    .map((player, index) => {
-      const colorValue = PLAYER_CHART_COLORS[index % PLAYER_CHART_COLORS.length];
+    .map((player) => {
+      const colorValue = getChartColor(player.colors);
       return {
         x: player.name,
         y: player.commanderDamage,
@@ -159,29 +203,33 @@ export default function EndGameScreen({ route, navigation }) {
 
         <View style={styles.statsContainer}>
           {gameData.map((player, index) => {
-            // Use the same colors as pie charts for consistency
-            const playerColor = PLAYER_CHART_COLORS[index % PLAYER_CHART_COLORS.length];
+            // Use the same gradient colors as the game screen
+            const gradientColors = getGradientColors(player.colors);
             return (
-              <View
+              <LinearGradient
                 key={index}
-                style={[
-                  styles.statCard,
-                  { backgroundColor: playerColor },
-                ]}
+                colors={gradientColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCard}
               >
-                <Text style={[styles.statName, { color: '#fff' }]}>
-                  {player.name}
-                </Text>
-                <Text style={[styles.statText, { color: '#fff' }]}>
-                  Main Life Damage: {player.mainLifeDamage}
-                </Text>
-                <Text style={[styles.statText, { color: '#fff' }]}>
-                  Commander Damage: {player.commanderDamage}
-                </Text>
-                <Text style={[styles.statText, { color: '#fff' }]}>
-                  Total Damage: {player.mainLifeDamage + player.commanderDamage}
-                </Text>
-              </View>
+                <View style={styles.statCardContent}>
+                  <Text style={[styles.statName, { color: '#fff' }]}>
+                    {player.name}
+                  </Text>
+                  <View style={styles.statDetails}>
+                    <Text style={[styles.statText, { color: '#fff' }]}>
+                      Main Life Damage: {player.mainLifeDamage}
+                    </Text>
+                    <Text style={[styles.statText, { color: '#fff' }]}>
+                      Commander Damage: {player.commanderDamage}
+                    </Text>
+                    <Text style={[styles.statText, { color: '#fff' }]}>
+                      Total Damage: {player.mainLifeDamage + player.commanderDamage}
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
             );
           })}
         </View>
@@ -251,12 +299,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 8,
+    position: 'relative',
+    overflow: 'visible',
+  },
+  statCardContent: {
+    position: 'relative',
+    width: '100%',
+    minHeight: 100,
   },
   statName: {
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 12,
     textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    textAlign: 'left',
+  },
+  statDetails: {
+    marginTop: 35,
   },
   statText: {
     fontSize: 17,
