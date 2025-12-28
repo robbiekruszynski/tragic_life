@@ -26,7 +26,7 @@ const COLORS = {
 };
 
 export default function EndGameScreen({ route, navigation }) {
-  const { gameData, gameStartTime, gameEndTime } = route.params;
+  const { gameData, gameStartTime, gameEndTime, poisonEnabled } = route.params;
   const [dimensions, setDimensions] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const [gameDuration, setGameDuration] = useState(0);
 
@@ -91,11 +91,15 @@ export default function EndGameScreen({ route, navigation }) {
       message += `─────────────────\n\n`;
       
       gameData.forEach((player, index) => {
-        const totalDamage = player.mainLifeDamage + player.commanderDamage;
+        const poisonDamage = poisonEnabled ? (player.poisonCounters || 0) : 0;
+        const totalDamage = player.mainLifeDamage + player.commanderDamage + poisonDamage;
         const colors = Array.isArray(player.colors) ? player.colors.join(', ') : player.colors;
         message += `${index + 1}. ${player.name}\n`;
         message += `   💚 Main Life Damage: ${player.mainLifeDamage}\n`;
         message += `   ⚔️ Commander Damage: ${player.commanderDamage}\n`;
+        if (poisonEnabled) {
+          message += `   ☠️ Poison Counters: ${poisonDamage}\n`;
+        }
         message += `   📉 Total Damage: ${totalDamage}\n`;
         if (colors && colors !== 'grey') {
           message += `   🎨 Colors: ${colors}\n`;
@@ -271,8 +275,23 @@ export default function EndGameScreen({ route, navigation }) {
       };
     });
 
+  // POISON COUNTER - Easy to remove: delete this entire block
+  const poisonData = poisonEnabled
+    ? gameData
+        .filter(player => player.poisonCounters > 0)
+        .map((player) => {
+          return {
+            x: player.name,
+            y: player.poisonCounters,
+            colors: player.colors,
+            label: `${player.name}\n${player.poisonCounters}`,
+          };
+        })
+    : [];
+
   const totalMainLifeDamage = mainLifeData.reduce((sum, item) => sum + item.y, 0);
   const totalCommanderDamage = commanderData.reduce((sum, item) => sum + item.y, 0);
+  const totalPoisonDamage = poisonData.reduce((sum, item) => sum + item.y, 0);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -356,6 +375,44 @@ export default function EndGameScreen({ route, navigation }) {
           )}
         </View>
 
+        {/* POISON COUNTER - Easy to remove: delete this entire chartContainer block */}
+        {poisonEnabled && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>Poison Counters</Text>
+            {totalPoisonDamage > 0 && poisonData.length > 0 ? (
+              <>
+                <GradientPieChart 
+                  data={poisonData}
+                  size={getPieChartSize()} 
+                  innerRadius={getPieChartSize() * 0.2} 
+                  padAngle={5}
+                />
+                <View style={styles.legendContainer}>
+                  {poisonData.map((item, index) => {
+                    const percentage = totalPoisonDamage > 0 ? ((item.y / totalPoisonDamage) * 100).toFixed(1) : 0;
+                    const gradientColors = getGradientColors(item.colors);
+                    return (
+                      <View key={index} style={styles.legendItem}>
+                        <LinearGradient
+                          colors={gradientColors}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.legendColor}
+                        />
+                        <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Text style={styles.noDataText}>No poison counters</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         <View style={styles.statsContainer}>
           {gameData.map((player, index) => {
             // Use the same gradient colors as the game screen
@@ -379,8 +436,14 @@ export default function EndGameScreen({ route, navigation }) {
                 <Text style={[styles.statText, { color: '#fff' }]}>
                   Commander Damage: {player.commanderDamage}
                 </Text>
+                {/* POISON COUNTER - Easy to remove: delete this Text block */}
+                {poisonEnabled && (
+                  <Text style={[styles.statText, { color: '#fff' }]}>
+                    Poison Counters: {player.poisonCounters || 0}
+                  </Text>
+                )}
                 <Text style={[styles.statText, { color: '#fff' }]}>
-                  Total Damage: {player.mainLifeDamage + player.commanderDamage}
+                  Total Damage: {player.mainLifeDamage + player.commanderDamage + (poisonEnabled ? (player.poisonCounters || 0) : 0)}
                 </Text>
               </View>
                 </View>

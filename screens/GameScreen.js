@@ -207,8 +207,9 @@ export default function GameScreen({ route, navigation }) {
     setPlayers(players.map(p => {
       if (p.id === playerId) {
         const newShowPoison = !p.showPoison;
-        // When toggling poison on, set counter to 0 (starting value)
-        if (newShowPoison) {
+        // When toggling poison on for the first time, set counter to 0 (starting value)
+        // Otherwise, preserve the existing counter value
+        if (newShowPoison && p.poisonCounters === undefined) {
           return { ...p, showPoison: newShowPoison, poisonCounters: 0 };
         }
         return { ...p, showPoison: newShowPoison };
@@ -249,6 +250,7 @@ export default function GameScreen({ route, navigation }) {
       gameData,
       gameStartTime: gameStartTime || gameEndTime,
       gameEndTime: gameEndTime,
+      poisonEnabled, // POISON COUNTER - Easy to remove: delete this line
     });
   };
 
