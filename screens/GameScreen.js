@@ -3,14 +3,17 @@ import {
   View,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   TextInput,
+  Modal,
   Dimensions,
   Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -30,6 +33,9 @@ export default function GameScreen({ route, navigation }) {
   const [duelMode, setDuelMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
   const [gameStartTime, setGameStartTime] = useState(null);
+  // POISON COUNTER - Easy to remove: delete these 2 lines
+  const [poisonEnabled, setPoisonEnabled] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
   // Animation values for gradient color shifts
   const gradientAnimations = useRef(
@@ -63,6 +69,9 @@ export default function GameScreen({ route, navigation }) {
         showCommander: false,
         initialLife: 40,
         initialCommanderDamage: 21,
+        // POISON COUNTER - Easy to remove: delete these 2 lines
+        poisonCounters: 0,
+        showPoison: false,
       }));
       setPlayers(playersWithGameData);
       // Set game start time when players are initialized
@@ -80,6 +89,9 @@ export default function GameScreen({ route, navigation }) {
         colors: ['grey'],
         initialLife: 40,
         initialCommanderDamage: 21,
+        // POISON COUNTER - Easy to remove: delete these 2 lines
+        poisonCounters: 0,
+        showPoison: false,
       }));
       setPlayers(defaultPlayers);
       // Set game start time when players are initialized
@@ -99,6 +111,15 @@ export default function GameScreen({ route, navigation }) {
   }, []);
 
   const adjustLife = (playerId, amount) => {
+    // HAPTIC FEEDBACK - Easy to remove: delete this entire try-catch block
+    if (amount < 0) {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (error) {
+        // Haptics not available on this device, silently fail
+      }
+    }
+
     // Clear existing timeout if any
     if (feedbackTimeoutRef.current) {
       clearTimeout(feedbackTimeoutRef.current);
@@ -137,7 +158,12 @@ export default function GameScreen({ route, navigation }) {
 
     setPlayers(players.map(p => {
       if (p.id === playerId) {
-        if (duelMode[p.id]) {
+        // POISON COUNTER - Easy to remove: delete this entire if block
+        if (poisonEnabled && p.showPoison) {
+          // Poison mode: adjust poison counters (max 10)
+          const newPoisonCounters = Math.max(0, Math.min(10, p.poisonCounters + amount));
+          return { ...p, poisonCounters: newPoisonCounters };
+        } else if (duelMode[p.id]) {
           // Duel mode: adjust both life and commander damage
           const newLife = Math.max(0, p.life + amount);
           const newCommanderDamage = Math.max(0, p.commanderDamage + amount);
@@ -173,6 +199,16 @@ export default function GameScreen({ route, navigation }) {
     }));
   };
 
+  // POISON COUNTER - Easy to remove: delete this entire function
+  const togglePoison = (playerId) => {
+    setPlayers(players.map(p => {
+      if (p.id === playerId) {
+        return { ...p, showPoison: !p.showPoison };
+      }
+      return p;
+    }));
+  };
+
 
   const handleEndGame = () => {
     const gameData = players.map(p => ({
@@ -180,6 +216,8 @@ export default function GameScreen({ route, navigation }) {
       colors: p.colors,
       mainLifeDamage: p.initialLife - p.life,
       commanderDamage: p.initialCommanderDamage - p.commanderDamage,
+      // POISON COUNTER - Easy to remove: delete this line
+      poisonCounters: p.poisonCounters || 0,
     }));
     const gameEndTime = Date.now();
     navigation.navigate('EndGame', { 
@@ -409,7 +447,7 @@ export default function GameScreen({ route, navigation }) {
     .map(({ player }) => player);
 
   // Animated Gradient Card Component (defined inside to access functions)
-  const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, gradientAnimation, styles }) => {
+  const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, gradientAnimation, styles, togglePoison }) => {
     const gradientSets = getPlayerGradientSets(player);
     const [gradientColors, setGradientColors] = useState(gradientSets[0]);
     const [animationProgress, setAnimationProgress] = useState(0);
@@ -444,7 +482,17 @@ export default function GameScreen({ route, navigation }) {
           {/* Player Name - Top Right */}
           <View style={[styles.topSection, isTop && styles.topSectionRotated]} pointerEvents="none">
             <View style={styles.nameContainer} pointerEvents="none">
-              <Text style={[styles.playerName, textStyle]} pointerEvents="none">{player.name}</Text>
+              <View style={styles.nameRow} pointerEvents="none">
+                <Text style={[styles.playerName, textStyle]} pointerEvents="none">{player.name}</Text>
+                {/* POISON COUNTER - Easy to remove: delete this entire View block */}
+                {poisonEnabled && player.poisonCounters > 0 && (
+                  <View style={styles.poisonBadge} pointerEvents="none">
+                    <Text style={[styles.poisonBadgeText, textStyle]} pointerEvents="none">
+                      ☠️ {player.poisonCounters}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
           
@@ -461,11 +509,12 @@ export default function GameScreen({ route, navigation }) {
             </View>
           )}
 
-          {/* Life/Commander Counter - Right below name */}
+          {/* Life/Commander/Poison Counter - Right below name */}
           <View style={[styles.lifeContainer, isTop && styles.lifeContainerTop]} pointerEvents="none">
             <View style={[styles.lifeValueContainer, isTop && styles.lifeValueContainerTop]} pointerEvents="none">
               <Text style={[styles.lifeValue, textStyle]} pointerEvents="none">
-                {player.showCommander ? player.commanderDamage : player.life}
+                {/* POISON COUNTER - Easy to remove: change this line to remove poison mode */}
+                {poisonEnabled && player.showPoison ? player.poisonCounters : (player.showCommander ? player.commanderDamage : player.life)}
               </Text>
             </View>
           </View>
@@ -517,6 +566,20 @@ export default function GameScreen({ route, navigation }) {
                   Dual
                 </Text>
               </TouchableOpacity>
+              {/* POISON COUNTER - Easy to remove: delete this entire TouchableOpacity block */}
+              {poisonEnabled && (
+                <TouchableOpacity
+                  style={[styles.poisonToggle, player.showPoison && styles.poisonToggleActive]}
+                  onPress={() => togglePoison(player.id)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  collapsable={false}
+                >
+                  <Text style={[styles.poisonToggleText, textStyle, isTop && styles.rotatedText]}>
+                    Poison
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -544,6 +607,7 @@ export default function GameScreen({ route, navigation }) {
         duelMode={duelMode}
         gradientAnimation={animValue}
         styles={styles}
+        togglePoison={togglePoison}
       />
     );
   };
@@ -579,6 +643,47 @@ export default function GameScreen({ route, navigation }) {
         <Text style={styles.endGameButtonText}>End Game</Text>
       </TouchableOpacity>
 
+      {/* POISON COUNTER - Easy to remove: delete this entire TouchableOpacity block */}
+      <TouchableOpacity 
+        style={styles.settingsButton} 
+        onPress={() => setShowSettings(true)}
+      >
+        <Text style={styles.settingsButtonText}>⚙</Text>
+      </TouchableOpacity>
+
+      {/* POISON COUNTER - Easy to remove: delete this entire overlay block */}
+      {showSettings && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalOverlayTouchable}
+            activeOpacity={1}
+            onPress={() => setShowSettings(false)}
+          >
+            <TouchableOpacity 
+              style={styles.modalContent}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={styles.modalTitle}>Settings</Text>
+              
+              <TouchableOpacity
+                style={[styles.settingRow, poisonEnabled && styles.settingRowActive]}
+                onPress={() => setPoisonEnabled(!poisonEnabled)}
+              >
+                <Text style={styles.settingText}>Enable Poison Counters</Text>
+                <Text style={styles.settingValue}>{poisonEnabled ? 'ON' : 'OFF'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowSettings(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -660,13 +765,14 @@ const styles = StyleSheet.create({
   buttonContainer: {
     position: 'absolute',
     bottom: 5,
-    left: 0,
-    right: 0,
+    left: 10,
+    right: 10,
     zIndex: 99999,
     elevation: 99999,
     alignItems: 'center',
     height: 60,
     backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   buttonContainerTop: {
     top: 5,
@@ -683,10 +789,28 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     position: 'relative',
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   playerName: {
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  // POISON COUNTER - Easy to remove: delete these 3 style blocks
+  poisonBadge: {
+    backgroundColor: 'rgba(156, 39, 176, 0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#fff',
+  },
+  poisonBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   topSection: {
     alignItems: 'flex-end',
@@ -771,19 +895,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20,
+    gap: 15,
     marginTop: 8,
     zIndex: 100002,
     elevation: 100002,
-    overflow: 'visible',
-    paddingHorizontal: 10,
+    overflow: 'hidden',
+    paddingHorizontal: 5,
+    flexWrap: 'wrap',
+    maxWidth: '100%',
   },
   lifeButtons: {
     flexDirection: 'row',
-    gap: 20,
+    gap: 15,
     zIndex: 100002,
     elevation: 100002,
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   lifeButton: {
     width: 50,
@@ -795,8 +921,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
     zIndex: 100001,
     elevation: 100001,
-    overflow: 'visible',
-    marginHorizontal: 5,
+    overflow: 'hidden',
+    marginHorizontal: 2,
   },
   lifeButtonText: {
     fontSize: 24,
@@ -835,10 +961,12 @@ const styles = StyleSheet.create({
   },
   toggleButtons: {
     flexDirection: 'row',
-    gap: 15,
+    gap: 8,
     zIndex: 100002,
     elevation: 100002,
-    overflow: 'visible',
+    overflow: 'hidden',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   commanderToggle: {
     paddingHorizontal: 15,
@@ -882,6 +1010,28 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
+  // POISON COUNTER - Easy to remove: delete these 3 style blocks
+  poisonToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 15,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 55,
+    minHeight: 35,
+    zIndex: 100001,
+    elevation: 100001,
+    overflow: 'hidden',
+    marginHorizontal: 2,
+  },
+  poisonToggleActive: {
+    backgroundColor: 'rgba(156, 39, 176, 0.8)',
+  },
+  poisonToggleText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
   endGameButton: {
     position: 'absolute',
     bottom: '47%',
@@ -900,6 +1050,97 @@ const styles = StyleSheet.create({
   endGameButtonText: {
     color: '#fff',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // POISON COUNTER - Easy to remove: delete these 2 style blocks
+  settingsButton: {
+    position: 'absolute',
+    bottom: '47%',
+    right: 8,
+    backgroundColor: '#666',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 10,
+  },
+  settingsButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // POISON COUNTER - Easy to remove: delete these 2 style blocks
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalOverlayTouchable: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 15,
+    padding: 30,
+    width: 300,
+    maxWidth: '90%',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    marginVertical: 5,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  settingRowActive: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#1a3a1a',
+  },
+  settingText: {
+    color: '#fff',
+    fontSize: 16,
+    flex: 1,
+  },
+  settingValue: {
+    color: '#4CAF50',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalCloseButton: {
+    backgroundColor: '#4CAF50',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  modalCloseButtonText: {
+    color: '#fff',
+    fontSize: 18,
     fontWeight: 'bold',
   },
   modalLabel: {
