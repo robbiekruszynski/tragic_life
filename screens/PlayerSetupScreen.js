@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -27,10 +28,15 @@ export default function PlayerSetupScreen({ route, navigation }) {
   const [players, setPlayers] = useState([]);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
 
-  // Lock to landscape orientation when screen is focused
+  // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      activateKeepAwakeAsync(); // Keep screen awake while setting up players
+      
+      return () => {
+        deactivateKeepAwake(); // Allow screen to sleep when leaving setup screen
+      };
     }, [])
   );
 

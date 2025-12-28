@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -30,6 +30,7 @@ export default function GameScreen({ route, navigation }) {
   const [players, setPlayers] = useState([]);
   const [duelMode, setDuelMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
+  const [gameStartTime, setGameStartTime] = useState(null);
   
   // Animation values for gradient color shifts
   const gradientAnimations = useRef(
@@ -45,7 +46,7 @@ export default function GameScreen({ route, navigation }) {
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      activateKeepAwake(); // Keep screen awake while game is active
+      activateKeepAwakeAsync(); // Keep screen awake while game is active
       
       return () => {
         deactivateKeepAwake(); // Allow screen to sleep when leaving game screen
@@ -65,6 +66,10 @@ export default function GameScreen({ route, navigation }) {
         initialCommanderDamage: 21,
       }));
       setPlayers(playersWithGameData);
+      // Set game start time when players are initialized
+      if (!gameStartTime) {
+        setGameStartTime(Date.now());
+      }
     } else {
       // Fallback: create default players if no setup data
       const defaultPlayers = Array.from({ length: playerCount || 4 }, (_, i) => ({
@@ -78,6 +83,10 @@ export default function GameScreen({ route, navigation }) {
         initialCommanderDamage: 21,
       }));
       setPlayers(defaultPlayers);
+      // Set game start time when players are initialized
+      if (!gameStartTime) {
+        setGameStartTime(Date.now());
+      }
     }
   }, [playerCount, initialPlayers]);
 
@@ -172,7 +181,12 @@ export default function GameScreen({ route, navigation }) {
       mainLifeDamage: p.initialLife - p.life,
       commanderDamage: p.initialCommanderDamage - p.commanderDamage,
     }));
-    navigation.navigate('EndGame', { gameData });
+    const gameEndTime = Date.now();
+    navigation.navigate('EndGame', { 
+      gameData,
+      gameStartTime: gameStartTime || gameEndTime,
+      gameEndTime: gameEndTime,
+    });
   };
 
   // Generate gradient sets from player's selected colors
