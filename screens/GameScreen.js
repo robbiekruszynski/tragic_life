@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Modal,
   Dimensions,
   Animated,
 } from 'react-native';
@@ -173,6 +172,7 @@ export default function GameScreen({ route, navigation }) {
       return p;
     }));
   };
+
 
   const handleEndGame = () => {
     const gameData = players.map(p => ({
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
   },
   endGameButton: {
     position: 'absolute',
-    bottom: '50%',
+    bottom: '47%',
     left: 8,
     backgroundColor: '#F44336',
     paddingHorizontal: 10,
@@ -901,28 +901,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  modalContent: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 15,
-    padding: 30,
-    width: width * 0.8,
-    maxWidth: 400,
-    zIndex: 1001,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   modalLabel: {
     fontSize: 16,
