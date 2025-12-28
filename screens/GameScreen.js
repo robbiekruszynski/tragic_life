@@ -539,10 +539,24 @@ export default function GameScreen({ route, navigation }) {
             <View style={[styles.lifeValueContainer, isTop && styles.lifeValueContainerTop]} pointerEvents="none">
               <Text style={[styles.lifeValue, textStyle]} pointerEvents="none">
                 {/* POISON COUNTER - Easy to remove: change this line to remove poison mode */}
-                {poisonEnabled && player.showPoison ? player.poisonCounters : (player.showCommander ? player.commanderDamage : player.life)}
+                {poisonEnabled && player.showPoison ? player.poisonCounters : player.life}
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* Commander Damage - RENDERED SEPARATELY, clickable to toggle dual mode */}
+        <View style={[styles.commanderDamageWrapper, isTop && styles.commanderDamageWrapperTop]} pointerEvents="box-none">
+          <TouchableOpacity
+            style={styles.commanderDamageContainer}
+            onPress={() => toggleDuel(player.id)}
+            activeOpacity={0.7}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+          >
+            <Text style={[styles.commanderDamageText, textStyle, isTop && styles.rotatedText, duelMode[player.id] && styles.commanderDamageActive]}>
+              {player.commanderDamage}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Buttons - RENDERED LAST, completely separate layer, NEVER rotated */}
@@ -569,28 +583,6 @@ export default function GameScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
             <View style={styles.toggleButtons} pointerEvents="box-none">
-              <TouchableOpacity
-                style={[styles.commanderToggle, player.showCommander && styles.commanderToggleActive]}
-                onPress={() => toggleCommander(player.id)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                collapsable={false}
-              >
-                <Text style={[styles.commanderToggleText, textStyle, isTop && styles.rotatedText]}>
-                  Commander
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.duelToggle, duelMode[player.id] && styles.duelToggleActive]}
-                onPress={() => toggleDuel(player.id)}
-                activeOpacity={0.7}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                collapsable={false}
-              >
-                <Text style={[styles.duelToggleText, textStyle, isTop && styles.rotatedText]}>
-                  Dual
-                </Text>
-              </TouchableOpacity>
               {/* POISON COUNTER - Easy to remove: delete this entire TouchableOpacity block */}
               {poisonEnabled && (
                 <TouchableOpacity
@@ -953,6 +945,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+  commanderDamageWrapper: {
+    position: 'absolute',
+    top: 35,
+    right: 10,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    zIndex: 100002,
+    elevation: 100002,
+    pointerEvents: 'box-none',
+  },
+  commanderDamageWrapperTop: {
+    top: 'auto',
+    bottom: 35,
+    right: 10,
+    left: 'auto',
+  },
+  commanderDamageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+    minWidth: 50,
+    minHeight: 50,
+  },
+  commanderDamageText: {
+    fontSize: Math.min(width * 0.25, height * 0.3) * 0.5,
+    fontWeight: 'bold',
+    opacity: 0.5,
+    textAlign: 'center',
+  },
+  commanderDamageActive: {
+    opacity: 1,
+    color: '#000',
+  },
   // POISON COUNTER - Easy to remove: delete these 3 style blocks
   poisonBadge: {
     backgroundColor: 'rgba(156, 39, 176, 0.8)',
@@ -1024,12 +1049,14 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   lifeValueContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     width: '100%',
-    pointerEvents: 'none',
+    pointerEvents: 'box-none',
     overflow: 'visible',
     paddingTop: 0,
+    gap: 20,
   },
   lifeValueContainerTop: {
     marginTop: -30 - (height * 0.05),
