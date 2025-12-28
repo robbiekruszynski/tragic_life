@@ -40,7 +40,7 @@ export default function MenuScreen({ navigation }) {
             <Text style={styles.countText}>{playerCount}</Text>
             <TouchableOpacity
               style={styles.button}
-              onPress={() => setPlayerCount(Math.min(6, playerCount + 1))}
+              onPress={() => setPlayerCount(Math.min(4, playerCount + 1))}
             >
               <Text style={styles.buttonText}>+</Text>
             </TouchableOpacity>
