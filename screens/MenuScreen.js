@@ -11,6 +11,7 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 
 export default function MenuScreen({ navigation }) {
   const [playerCount, setPlayerCount] = useState(4);
+  const [gameMode, setGameMode] = useState('commander'); // 'commander' or 'standard'
 
   // Lock to landscape orientation when screen is focused
   useFocusEffect(
@@ -20,7 +21,7 @@ export default function MenuScreen({ navigation }) {
   );
 
   const handleStartGame = () => {
-    navigation.navigate('PlayerSetup', { playerCount });
+    navigation.navigate('PlayerSetup', { playerCount, gameMode });
   };
 
   return (
@@ -47,8 +48,23 @@ export default function MenuScreen({ navigation }) {
           </View>
         </View>
 
+        <View style={styles.modeSelection}>
+          <TouchableOpacity 
+            style={[styles.modeButton, gameMode === 'standard' && styles.modeButtonActive]} 
+            onPress={() => setGameMode('standard')}
+          >
+            <Text style={[styles.modeButtonText, gameMode === 'standard' && styles.modeButtonTextActive]}>Standard</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.modeButton, gameMode === 'commander' && styles.modeButtonActive]} 
+            onPress={() => setGameMode('commander')}
+          >
+            <Text style={[styles.modeButtonText, gameMode === 'commander' && styles.modeButtonTextActive]}>Commander</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.startButton} onPress={handleStartGame}>
-          <Text style={styles.startButtonText}>Continue</Text>
+          <Text style={styles.startButtonText}>Commander</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -120,6 +136,32 @@ const styles = StyleSheet.create({
   },
   startButtonText: {
     fontSize: 20,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  modeSelection: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 30,
+  },
+  modeButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#333',
+    borderWidth: 2,
+    borderColor: '#555',
+  },
+  modeButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  modeButtonText: {
+    fontSize: 18,
+    color: '#aaa',
+    fontWeight: '600',
+  },
+  modeButtonTextActive: {
     color: '#fff',
     fontWeight: 'bold',
   },

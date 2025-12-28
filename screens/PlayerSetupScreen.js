@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width, height } = Dimensions.get('window');
 
 const COLORS = {
-  white: { name: 'White', color: '#F5F5F5', textColor: '#000' },
+  white: { name: 'White', color: '#D0D0D0', textColor: '#000' },
   blue: { name: 'Blue', color: '#2196F3', textColor: '#fff' },
   red: { name: 'Red', color: '#F44336', textColor: '#fff' },
   black: { name: 'Black', color: '#212121', textColor: '#fff' },
@@ -24,7 +24,7 @@ const COLORS = {
 };
 
 export default function PlayerSetupScreen({ route, navigation }) {
-  const { playerCount } = route.params;
+  const { playerCount, gameMode } = route.params;
   const [players, setPlayers] = useState([]);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
 
@@ -92,7 +92,7 @@ export default function PlayerSetupScreen({ route, navigation }) {
   };
 
   const handleStartGame = () => {
-    navigation.navigate('Game', { players });
+    navigation.navigate('Game', { players, gameMode });
   };
 
   // Generate gradient colors from selected colors (same logic as GameScreen)

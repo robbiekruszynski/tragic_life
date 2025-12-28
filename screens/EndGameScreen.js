@@ -17,7 +17,7 @@ import Svg, { Path, Defs, LinearGradient as SvgLinearGradient, Stop, ClipPath, C
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const COLORS = {
-  white: { name: 'White', color: '#F5F5F5', textColor: '#000' },
+  white: { name: 'White', color: '#D0D0D0', textColor: '#000' },
   blue: { name: 'Blue', color: '#2196F3', textColor: '#fff' },
   red: { name: 'Red', color: '#F44336', textColor: '#fff' },
   black: { name: 'Black', color: '#212121', textColor: '#fff' },

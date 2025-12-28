@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width, height } = Dimensions.get('window');
 
 const COLORS = {
-  white: { name: 'White', color: '#F5F5F5', textColor: '#000' },
+  white: { name: 'White', color: '#D0D0D0', textColor: '#000' },
   blue: { name: 'Blue', color: '#2196F3', textColor: '#fff' },
   red: { name: 'Red', color: '#F44336', textColor: '#fff' },
   black: { name: 'Black', color: '#212121', textColor: '#fff' },
@@ -29,7 +29,7 @@ const COLORS = {
 };
 
 export default function GameScreen({ route, navigation }) {
-  const { playerCount, players: initialPlayers } = route.params;
+  const { playerCount, players: initialPlayers, gameMode = 'commander' } = route.params;
   const [players, setPlayers] = useState([]);
   const [duelMode, setDuelMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
@@ -63,15 +63,19 @@ export default function GameScreen({ route, navigation }) {
   );
 
   useEffect(() => {
+    // Determine initial values based on game mode
+    const initialLife = gameMode === 'standard' ? 20 : 40;
+    const initialCommanderDamage = gameMode === 'standard' ? 0 : 21;
+    
     // Use provided players from setup screen, or create default players
     if (initialPlayers && initialPlayers.length > 0) {
       const playersWithGameData = initialPlayers.map(p => ({
         ...p,
-        life: 40,
-        commanderDamage: 21,
+        life: initialLife,
+        commanderDamage: initialCommanderDamage,
         showCommander: false,
-        initialLife: 40,
-        initialCommanderDamage: 21,
+        initialLife: initialLife,
+        initialCommanderDamage: initialCommanderDamage,
         // POISON COUNTER - Easy to remove: delete these 2 lines
         poisonCounters: 0,
         showPoison: false,
@@ -86,12 +90,12 @@ export default function GameScreen({ route, navigation }) {
       const defaultPlayers = Array.from({ length: playerCount || 4 }, (_, i) => ({
         id: i,
         name: `Player ${i + 1}`,
-        life: 40,
-        commanderDamage: 21,
+        life: initialLife,
+        commanderDamage: initialCommanderDamage,
         showCommander: false,
         colors: ['grey'],
-        initialLife: 40,
-        initialCommanderDamage: 21,
+        initialLife: initialLife,
+        initialCommanderDamage: initialCommanderDamage,
         // POISON COUNTER - Easy to remove: delete these 2 lines
         poisonCounters: 0,
         showPoison: false,
@@ -102,7 +106,7 @@ export default function GameScreen({ route, navigation }) {
         setGameStartTime(Date.now());
       }
     }
-  }, [playerCount, initialPlayers]);
+  }, [playerCount, initialPlayers, gameMode]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -474,7 +478,7 @@ export default function GameScreen({ route, navigation }) {
     .map(({ player }) => player);
 
   // Animated Gradient Card Component (defined inside to access functions)
-  const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, gradientAnimation, styles, togglePoison }) => {
+  const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, gradientAnimation, styles, togglePoison, gameMode }) => {
     const gradientSets = getPlayerGradientSets(player);
     const [gradientColors, setGradientColors] = useState(gradientSets[0]);
     const [animationProgress, setAnimationProgress] = useState(0);
@@ -547,19 +551,21 @@ export default function GameScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Commander Damage - RENDERED SEPARATELY, clickable to toggle dual mode */}
-        <View style={[styles.commanderDamageWrapper, isTop && styles.commanderDamageWrapperTop]} pointerEvents="box-none">
-          <TouchableOpacity
-            style={styles.commanderDamageContainer}
-            onPress={() => toggleDuel(player.id)}
-            activeOpacity={0.7}
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-          >
-            <Text style={[styles.commanderDamageText, textStyle, isTop && styles.rotatedText, duelMode[player.id] && styles.commanderDamageActive]}>
-              {player.commanderDamage}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Commander Damage - RENDERED SEPARATELY, clickable to toggle dual mode (only in commander mode) */}
+        {gameMode === 'commander' && (
+          <View style={[styles.commanderDamageWrapper, isTop && styles.commanderDamageWrapperTop]} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.commanderDamageContainer}
+              onPress={() => toggleDuel(player.id)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
+              <Text style={[styles.commanderDamageText, textStyle, isTop && styles.rotatedText, duelMode[player.id] && styles.commanderDamageActive]}>
+                {player.commanderDamage}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Buttons - RENDERED LAST, completely separate layer, NEVER rotated */}
         <View style={[styles.buttonContainer, isTop && styles.buttonContainerTop]} pointerEvents="box-none">
@@ -627,6 +633,7 @@ export default function GameScreen({ route, navigation }) {
         gradientAnimation={animValue}
         styles={styles}
         togglePoison={togglePoison}
+        gameMode={gameMode}
       />
     );
   };
