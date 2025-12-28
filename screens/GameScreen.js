@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -34,6 +35,9 @@ export default function GameScreen({ route, navigation }) {
   const [duelMode, setDuelMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
   const [gameStartTime, setGameStartTime] = useState(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [pausedTime, setPausedTime] = useState(0);
+  const [totalPausedDuration, setTotalPausedDuration] = useState(0);
   // POISON COUNTER - Easy to remove: delete these 2 lines
   const [poisonEnabled, setPoisonEnabled] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -49,12 +53,41 @@ export default function GameScreen({ route, navigation }) {
   const feedbackTimeoutRef = useRef(null);
   // Ref to track current feedback state for sign change detection
   const currentFeedbackRef = useRef({ playerId: null, amount: 0 });
+  // Ref to track if sound has been played for eliminated players
+  const eliminatedPlayersRef = useRef(new Set());
+
+  // Play sad trombone sound when player reaches 0 life
+  const playEliminationSound = async () => {
+    try {
+      // Using a web URL for sad trombone sound
+      // Note: For production, consider adding a local sound file to assets/
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: 'https://www.soundjay.com/misc/sounds/sad-trombone.wav' },
+        { shouldPlay: true, volume: 0.7 }
+      );
+      // Sound will play and auto-unload when done
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) {
+          sound.unloadAsync();
+        }
+      });
+    } catch (error) {
+      // Silently fail if audio can't be played (network issues, etc.)
+      // In production, you may want to use a local asset file instead
+    }
+  };
 
   // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
       activateKeepAwakeAsync(); // Keep screen awake while game is active
+      
+      // Set audio mode for playback
+      Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
       
       return () => {
         deactivateKeepAwake(); // Allow screen to sleep when leaving game screen
@@ -165,25 +198,52 @@ export default function GameScreen({ route, navigation }) {
 
     setPlayers(players.map(p => {
       if (p.id === playerId) {
+        let newLife = p.life;
+        let newCommanderDamage = p.commanderDamage;
+        let newPoisonCounters = p.poisonCounters;
+        
         // POISON COUNTER - Easy to remove: delete this entire if block
         if (poisonEnabled && p.showPoison) {
           // Poison mode: adjust poison counters (max 10)
-          const newPoisonCounters = Math.max(0, Math.min(10, p.poisonCounters + amount));
-          return { ...p, poisonCounters: newPoisonCounters };
+          newPoisonCounters = Math.max(0, Math.min(10, p.poisonCounters + amount));
         } else if (duelMode[p.id]) {
           // Duel mode: adjust both life and commander damage
-          const newLife = Math.max(0, p.life + amount);
-          const newCommanderDamage = Math.max(0, p.commanderDamage + amount);
-          return { ...p, life: newLife, commanderDamage: newCommanderDamage };
+          newLife = Math.max(0, p.life + amount);
+          newCommanderDamage = Math.max(0, p.commanderDamage + amount);
         } else if (p.showCommander) {
           // Commander mode: adjust commander damage only
-          const newCommanderDamage = Math.max(0, p.commanderDamage + amount);
-          return { ...p, commanderDamage: newCommanderDamage };
+          newCommanderDamage = Math.max(0, p.commanderDamage + amount);
         } else {
           // Normal mode: adjust life only
-          const newLife = Math.max(0, p.life + amount);
-          return { ...p, life: newLife };
+          newLife = Math.max(0, p.life + amount);
         }
+
+        // Check elimination conditions and play sound
+        // 1. Main life reaches 0
+        const isEliminatedByLife = newLife === 0 && p.life > 0;
+        // 2. Poison counters reach 10
+        const isEliminatedByPoison = poisonEnabled && newPoisonCounters >= 10 && p.poisonCounters < 10;
+        // 3. Commander damage reaches 0 (21 damage taken)
+        const isEliminatedByCommander = gameMode === 'commander' && newCommanderDamage === 0 && p.commanderDamage > 0;
+
+        // Play sound if any elimination condition is met (only once per elimination)
+        if ((isEliminatedByLife || isEliminatedByPoison || isEliminatedByCommander) && !eliminatedPlayersRef.current.has(playerId)) {
+          eliminatedPlayersRef.current.add(playerId);
+          playEliminationSound();
+        }
+
+        // Reset eliminated status if player is no longer eliminated (life > 0, poison < 10, commander damage > 0)
+        const stillEliminated = (newLife === 0) || (poisonEnabled && newPoisonCounters >= 10) || (gameMode === 'commander' && newCommanderDamage === 0);
+        if (!stillEliminated && eliminatedPlayersRef.current.has(playerId)) {
+          eliminatedPlayersRef.current.delete(playerId);
+        }
+
+        return {
+          ...p,
+          life: newLife,
+          commanderDamage: newCommanderDamage,
+          poisonCounters: newPoisonCounters,
+        };
       }
       return p;
     }));
@@ -250,9 +310,13 @@ export default function GameScreen({ route, navigation }) {
       poisonCounters: p.poisonCounters || 0,
     }));
     const gameEndTime = Date.now();
+    // Adjust game start time by subtracting total paused duration
+    const adjustedGameStartTime = gameStartTime 
+      ? gameStartTime + totalPausedDuration + (isPaused ? (Date.now() - pausedTime) : 0)
+      : gameEndTime;
     navigation.navigate('EndGame', { 
       gameData,
-      gameStartTime: gameStartTime || gameEndTime,
+      gameStartTime: adjustedGameStartTime,
       gameEndTime: gameEndTime,
       poisonEnabled, // POISON COUNTER - Easy to remove: delete this line
     });
@@ -699,6 +763,33 @@ export default function GameScreen({ route, navigation }) {
                 <Text style={styles.settingText}>Enable Poison Counters</Text>
                 <Text style={styles.settingValue}>{poisonEnabled ? 'ON' : 'OFF'}</Text>
               </TouchableOpacity>
+
+              {!isPaused ? (
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={() => {
+                    setIsPaused(true);
+                    setPausedTime(Date.now());
+                  }}
+                >
+                  <Text style={styles.settingText}>Pause Timer</Text>
+                  <Text style={styles.settingValue}>⏸️</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.settingRow, styles.settingRowActive]}
+                  onPress={() => {
+                    const pauseDuration = Date.now() - pausedTime;
+                    setTotalPausedDuration(prev => prev + pauseDuration);
+                    setIsPaused(false);
+                    setPausedTime(0);
+                    setShowSettings(false);
+                  }}
+                >
+                  <Text style={styles.settingText}>Resume Timer</Text>
+                  <Text style={styles.settingValue}>▶️</Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 style={styles.settingRow}
