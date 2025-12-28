@@ -44,7 +44,7 @@ export default function PlayerSetupScreen({ route, navigation }) {
     const initialPlayers = Array.from({ length: playerCount }, (_, i) => ({
       id: i,
       name: `Player ${i + 1}`,
-      colors: ['grey'],
+      colors: [],
     }));
     setPlayers(initialPlayers);
   }, [playerCount]);
@@ -78,9 +78,9 @@ export default function PlayerSetupScreen({ route, navigation }) {
         if (p.id === playerId) {
           const currentColors = Array.isArray(p.colors) ? p.colors : [p.colors];
           if (currentColors.includes(colorKey)) {
-            // Remove color if already selected, but keep at least one color
+            // Remove color if already selected
             const newColors = currentColors.filter(c => c !== colorKey);
-            return { ...p, colors: newColors.length > 0 ? newColors : ['grey'] };
+            return { ...p, colors: newColors };
           } else {
             // Add color if not selected
             return { ...p, colors: [...currentColors, colorKey] };
@@ -98,7 +98,7 @@ export default function PlayerSetupScreen({ route, navigation }) {
   // Generate gradient colors from selected colors (same logic as GameScreen)
   const getGradientColors = (selectedColors) => {
     if (!selectedColors || selectedColors.length === 0) {
-      return [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color];
+      return ['#1a1a1a', '#2a2a2a', '#1a1a1a']; // Dark gradient when no colors selected
     }
     
     const colorArray = Array.isArray(selectedColors) ? selectedColors : [selectedColors];

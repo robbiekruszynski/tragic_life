@@ -9,6 +9,7 @@ import {
   Modal,
   Dimensions,
   Animated,
+  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -36,6 +37,8 @@ export default function GameScreen({ route, navigation }) {
   // POISON COUNTER - Easy to remove: delete these 2 lines
   const [poisonEnabled, setPoisonEnabled] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDiceModal, setShowDiceModal] = useState(false);
+  const [diceSides, setDiceSides] = useState(20);
   
   // Animation values for gradient color shifts
   const gradientAnimations = useRef(
@@ -203,12 +206,34 @@ export default function GameScreen({ route, navigation }) {
   const togglePoison = (playerId) => {
     setPlayers(players.map(p => {
       if (p.id === playerId) {
-        return { ...p, showPoison: !p.showPoison };
+        const newShowPoison = !p.showPoison;
+        // When toggling poison on, set counter to 0 (starting value)
+        if (newShowPoison) {
+          return { ...p, showPoison: newShowPoison, poisonCounters: 0 };
+        }
+        return { ...p, showPoison: newShowPoison };
       }
       return p;
     }));
   };
 
+  const flipCoin = () => {
+    const result = Math.random() < 0.5 ? 'Heads' : 'Tails';
+    Alert.alert(
+      'Coin Flip',
+      result,
+      [{ text: 'OK', onPress: () => {} }]
+    );
+  };
+
+  const rollDice = () => {
+    const result = Math.floor(Math.random() * diceSides) + 1;
+    Alert.alert(
+      `D${diceSides} Roll`,
+      `You rolled: ${result}`,
+      [{ text: 'OK', onPress: () => setShowDiceModal(false) }]
+    );
+  };
 
   const handleEndGame = () => {
     const gameData = players.map(p => ({
@@ -640,7 +665,7 @@ export default function GameScreen({ route, navigation }) {
       </View>
 
       <TouchableOpacity style={styles.endGameButton} onPress={handleEndGame}>
-        <Text style={styles.endGameButtonText}>End Game</Text>
+        <Text style={styles.endGameButtonText}>END</Text>
       </TouchableOpacity>
 
       {/* POISON COUNTER - Easy to remove: delete this entire TouchableOpacity block */}
@@ -675,10 +700,139 @@ export default function GameScreen({ route, navigation }) {
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={styles.settingRow}
+                onPress={flipCoin}
+              >
+                <Text style={styles.settingText}>Flip Coin</Text>
+                <Text style={styles.settingValue}>🪙</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => setShowDiceModal(true)}
+              >
+                <Text style={styles.settingText}>Roll Dice</Text>
+                <Text style={styles.settingValue}>🎲</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={styles.modalCloseButton}
                 onPress={() => setShowSettings(false)}
               >
                 <Text style={styles.modalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Dice Roll Modal */}
+      {showDiceModal && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalOverlayTouchable}
+            activeOpacity={1}
+            onPress={() => setShowDiceModal(false)}
+          >
+            <TouchableOpacity 
+              style={styles.modalContent}
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={styles.modalTitle}>Select Dice</Text>
+              
+              <View style={styles.diceSelectorContainer}>
+                <Text style={styles.diceLabel}>Number of sides: {diceSides}</Text>
+                
+                {/* Quick preset buttons for common dice */}
+                <View style={styles.dicePresetsRow}>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 4 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(4)}
+                  >
+                    <Text style={styles.dicePresetText}>D4</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 6 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(6)}
+                  >
+                    <Text style={styles.dicePresetText}>D6</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 8 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(8)}
+                  >
+                    <Text style={styles.dicePresetText}>D8</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 10 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(10)}
+                  >
+                    <Text style={styles.dicePresetText}>D10</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 12 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(12)}
+                  >
+                    <Text style={styles.dicePresetText}>D12</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 20 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(20)}
+                  >
+                    <Text style={styles.dicePresetText}>D20</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.dicePresetButton, diceSides === 100 && styles.dicePresetButtonActive]}
+                    onPress={() => setDiceSides(100)}
+                  >
+                    <Text style={styles.dicePresetText}>D100</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Manual input with +/- buttons */}
+                <View style={styles.diceInputContainer}>
+                  <Text style={styles.diceInputLabel}>Or enter custom:</Text>
+                  <View style={styles.diceButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.diceButton}
+                      onPress={() => setDiceSides(Math.max(3, diceSides - 1))}
+                    >
+                      <Text style={styles.diceButtonText}>-</Text>
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.diceInput}
+                      value={diceSides.toString()}
+                      onChangeText={(text) => {
+                        const num = parseInt(text) || 3;
+                        setDiceSides(Math.min(100, Math.max(3, num)));
+                      }}
+                      keyboardType="numeric"
+                      maxLength={3}
+                      selectTextOnFocus
+                    />
+                    <TouchableOpacity
+                      style={styles.diceButton}
+                      onPress={() => setDiceSides(Math.min(100, diceSides + 1))}
+                    >
+                      <Text style={styles.diceButtonText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={rollDice}
+              >
+                <Text style={styles.modalCloseButtonText}>Roll D{diceSides}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalCloseButton, { marginTop: 10, backgroundColor: '#666' }]}
+                onPress={() => setShowDiceModal(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>Cancel</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -1036,10 +1190,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: '47%',
     left: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F44336',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1049,7 +1205,7 @@ const styles = StyleSheet.create({
   },
   endGameButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   // POISON COUNTER - Easy to remove: delete these 2 style blocks
@@ -1057,10 +1213,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: '47%',
     right: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#666',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1070,7 +1228,7 @@ const styles = StyleSheet.create({
   },
   settingsButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   // POISON COUNTER - Easy to remove: delete these 2 style blocks
@@ -1142,6 +1300,85 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  diceSelectorContainer: {
+    marginVertical: 20,
+    alignItems: 'center',
+    width: '100%',
+  },
+  diceLabel: {
+    color: '#fff',
+    fontSize: 18,
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  dicePresetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 20,
+    width: '100%',
+  },
+  dicePresetButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(76, 175, 80, 0.3)',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    minWidth: 50,
+  },
+  dicePresetButtonActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#fff',
+  },
+  dicePresetText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  diceInputContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  diceInputLabel: {
+    color: '#fff',
+    fontSize: 14,
+    marginBottom: 10,
+    fontWeight: '500',
+  },
+  diceButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  diceButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  diceButtonText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  diceInput: {
+    backgroundColor: '#1a1a1a',
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    minWidth: 80,
   },
   modalLabel: {
     fontSize: 16,
