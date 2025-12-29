@@ -15,7 +15,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
-import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
@@ -53,41 +52,12 @@ export default function GameScreen({ route, navigation }) {
   const feedbackTimeoutRef = useRef(null);
   // Ref to track current feedback state for sign change detection
   const currentFeedbackRef = useRef({ playerId: null, amount: 0 });
-  // Ref to track if sound has been played for eliminated players
-  const eliminatedPlayersRef = useRef(new Set());
-
-  // Play sad trombone sound when player reaches 0 life
-  const playEliminationSound = async () => {
-    try {
-      // Using a web URL for sad trombone sound
-      // Note: For production, consider adding a local sound file to assets/
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: 'https://www.soundjay.com/misc/sounds/sad-trombone.wav' },
-        { shouldPlay: true, volume: 0.7 }
-      );
-      // Sound will play and auto-unload when done
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) {
-          sound.unloadAsync();
-        }
-      });
-    } catch (error) {
-      // Silently fail if audio can't be played (network issues, etc.)
-      // In production, you may want to use a local asset file instead
-    }
-  };
 
   // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
       activateKeepAwakeAsync(); // Keep screen awake while game is active
-      
-      // Set audio mode for playback
-      Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: false,
-      });
       
       return () => {
         deactivateKeepAwake(); // Allow screen to sleep when leaving game screen
@@ -218,25 +188,6 @@ export default function GameScreen({ route, navigation }) {
           newLife = Math.max(0, p.life + amount);
         }
 
-        // Check elimination conditions and play sound
-        // 1. Main life reaches 0
-        const isEliminatedByLife = newLife === 0 && p.life > 0;
-        // 2. Poison counters reach 10
-        const isEliminatedByPoison = poisonEnabled && newPoisonCounters >= 10 && p.poisonCounters < 10;
-        // 3. Commander damage reaches 0 (21 damage taken)
-        const isEliminatedByCommander = gameMode === 'commander' && newCommanderDamage === 0 && p.commanderDamage > 0;
-
-        // Play sound if any elimination condition is met (only once per elimination)
-        if ((isEliminatedByLife || isEliminatedByPoison || isEliminatedByCommander) && !eliminatedPlayersRef.current.has(playerId)) {
-          eliminatedPlayersRef.current.add(playerId);
-          playEliminationSound();
-        }
-
-        // Reset eliminated status if player is no longer eliminated (life > 0, poison < 10, commander damage > 0)
-        const stillEliminated = (newLife === 0) || (poisonEnabled && newPoisonCounters >= 10) || (gameMode === 'commander' && newCommanderDamage === 0);
-        if (!stillEliminated && eliminatedPlayersRef.current.has(playerId)) {
-          eliminatedPlayersRef.current.delete(playerId);
-        }
 
         return {
           ...p,
