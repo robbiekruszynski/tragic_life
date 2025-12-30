@@ -67,8 +67,9 @@ export default function GameScreen({ route, navigation }) {
 
   useEffect(() => {
     // Determine initial values based on game mode
-    const initialLife = gameMode === 'standard' ? 20 : 40;
-    const initialCommanderDamage = gameMode === 'standard' ? 0 : 21;
+    // Standard and Modern operate the same way
+    const initialLife = (gameMode === 'standard' || gameMode === 'modern') ? 20 : 40;
+    const initialCommanderDamage = (gameMode === 'standard' || gameMode === 'modern') ? 0 : 21;
     
     // Use provided players from setup screen, or create default players
     if (initialPlayers && initialPlayers.length > 0) {
@@ -270,6 +271,7 @@ export default function GameScreen({ route, navigation }) {
       gameStartTime: adjustedGameStartTime,
       gameEndTime: gameEndTime,
       poisonEnabled, // POISON COUNTER - Easy to remove: delete this line
+      gameMode, // Pass game mode to display on end screen
     });
   };
 

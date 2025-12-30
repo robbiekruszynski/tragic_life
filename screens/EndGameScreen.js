@@ -26,7 +26,7 @@ const COLORS = {
 };
 
 export default function EndGameScreen({ route, navigation }) {
-  const { gameData, gameStartTime, gameEndTime, poisonEnabled } = route.params;
+  const { gameData, gameStartTime, gameEndTime, poisonEnabled, gameMode = 'commander' } = route.params;
   const [dimensions, setDimensions] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const [gameDuration, setGameDuration] = useState(0);
 
@@ -293,10 +293,19 @@ export default function EndGameScreen({ route, navigation }) {
   const totalCommanderDamage = commanderData.reduce((sum, item) => sum + item.y, 0);
   const totalPoisonDamage = poisonData.reduce((sum, item) => sum + item.y, 0);
 
+  // Format game mode name for display
+  const getGameModeDisplay = () => {
+    if (gameMode === 'standard') return 'Standard';
+    if (gameMode === 'modern') return 'Modern';
+    if (gameMode === 'commander') return 'Commander';
+    return 'Commander'; // default
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Game Summary</Text>
+        <Text style={styles.gameModeText}>Mode: {getGameModeDisplay()}</Text>
         
         {gameStartTime && (
           <View style={styles.timerContainer}>
@@ -490,6 +499,13 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  gameModeText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#4CAF50',
     marginBottom: 20,
     textAlign: 'center',
   },
