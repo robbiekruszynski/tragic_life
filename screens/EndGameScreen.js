@@ -295,10 +295,15 @@ export default function EndGameScreen({ route, navigation }) {
 
   // Format game mode name for display
   const getGameModeDisplay = () => {
-    if (gameMode === 'standard') return 'Standard';
-    if (gameMode === 'modern') return 'Modern';
-    if (gameMode === 'commander') return 'Commander';
-    return 'Commander'; // default
+    const modeMap = {
+      'standard': 'Standard',
+      'modern': 'Modern',
+      'pioneer': 'Pioneer',
+      'legacy': 'Legacy',
+      'vintage': 'Vintage',
+      'commander': 'Commander',
+    };
+    return modeMap[gameMode] || 'Commander'; // default
   };
 
   return (

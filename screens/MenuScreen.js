@@ -19,11 +19,11 @@ const WHEEL_ITEM_HEIGHT = 30;
 
 export default function MenuScreen({ navigation }) {
   const [playerCount, setPlayerCount] = useState(4);
-  const [gameMode, setGameMode] = useState('commander'); // 'commander', 'standard', or 'modern'
+  const [gameMode, setGameMode] = useState('commander'); // 'commander', 'standard', 'modern', 'pioneer', 'legacy', or 'vintage'
   const scrollViewRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const modes = ['standard', 'modern', 'commander'];
-  const [selectedIndex, setSelectedIndex] = useState(2); // 0 = standard, 1 = modern, 2 = commander
+  const modes = ['commander', 'legacy', 'modern', 'pioneer', 'standard', 'vintage'];
+  const [selectedIndex, setSelectedIndex] = useState(0); // 0 = commander, 1 = legacy, 2 = modern, 3 = pioneer, 4 = standard, 5 = vintage
 
   // Lock to landscape orientation when screen is focused
   useFocusEffect(

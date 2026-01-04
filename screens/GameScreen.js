@@ -67,9 +67,10 @@ export default function GameScreen({ route, navigation }) {
 
   useEffect(() => {
     // Determine initial values based on game mode
-    // Standard and Modern operate the same way
-    const initialLife = (gameMode === 'standard' || gameMode === 'modern') ? 20 : 40;
-    const initialCommanderDamage = (gameMode === 'standard' || gameMode === 'modern') ? 0 : 21;
+    // Standard, Modern, Pioneer, Legacy, and Vintage operate the same way (20 life, no commander)
+    const nonCommanderModes = ['standard', 'modern', 'pioneer', 'legacy', 'vintage'];
+    const initialLife = nonCommanderModes.includes(gameMode) ? 20 : 40;
+    const initialCommanderDamage = nonCommanderModes.includes(gameMode) ? 0 : 21;
     
     // Use provided players from setup screen, or create default players
     if (initialPlayers && initialPlayers.length > 0) {
