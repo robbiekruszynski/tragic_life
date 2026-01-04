@@ -92,11 +92,13 @@ export default function EndGameScreen({ route, navigation }) {
       
       gameData.forEach((player, index) => {
         const poisonDamage = poisonEnabled ? (player.poisonCounters || 0) : 0;
-        const totalDamage = player.mainLifeDamage + player.commanderDamage + poisonDamage;
+        const totalDamage = player.mainLifeDamage + (gameMode === 'commander' ? player.commanderDamage : 0) + poisonDamage;
         const colors = Array.isArray(player.colors) ? player.colors.join(', ') : player.colors;
         message += `${index + 1}. ${player.name}\n`;
         message += `   💚 Main Life Damage: ${player.mainLifeDamage}\n`;
-        message += `   ⚔️ Commander Damage: ${player.commanderDamage}\n`;
+        if (gameMode === 'commander') {
+          message += `   ⚔️ Commander Damage: ${player.commanderDamage}\n`;
+        }
         if (poisonEnabled) {
           message += `   ☠️ Poison Counters: ${poisonDamage}\n`;
         }
@@ -354,40 +356,42 @@ export default function EndGameScreen({ route, navigation }) {
           )}
         </View>
 
-        <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Commander Damage</Text>
-          {totalCommanderDamage > 0 && commanderData.length > 0 ? (
-            <>
-              <GradientPieChart 
-                data={commanderData}
-                size={getPieChartSize()} 
-                innerRadius={getPieChartSize() * 0.2} 
-                padAngle={5}
-              />
-              <View style={styles.legendContainer}>
-                {commanderData.map((item, index) => {
-                  const percentage = totalCommanderDamage > 0 ? ((item.y / totalCommanderDamage) * 100).toFixed(1) : 0;
-                  const gradientColors = getGradientColors(item.colors);
-                  return (
-                    <View key={index} style={styles.legendItem}>
-                      <LinearGradient
-                        colors={gradientColors}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.legendColor}
-                      />
-                      <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
-                    </View>
-                  );
-                })}
+        {gameMode === 'commander' && (
+          <View style={styles.chartContainer}>
+            <Text style={styles.chartTitle}>Commander Damage</Text>
+            {totalCommanderDamage > 0 && commanderData.length > 0 ? (
+              <>
+                <GradientPieChart 
+                  data={commanderData}
+                  size={getPieChartSize()} 
+                  innerRadius={getPieChartSize() * 0.2} 
+                  padAngle={5}
+                />
+                <View style={styles.legendContainer}>
+                  {commanderData.map((item, index) => {
+                    const percentage = totalCommanderDamage > 0 ? ((item.y / totalCommanderDamage) * 100).toFixed(1) : 0;
+                    const gradientColors = getGradientColors(item.colors);
+                    return (
+                      <View key={index} style={styles.legendItem}>
+                        <LinearGradient
+                          colors={gradientColors}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.legendColor}
+                        />
+                        <Text style={styles.legendText}>{item.x}: {item.y} ({percentage}%)</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <View style={styles.noDataContainer}>
+                <Text style={styles.noDataText}>No commander damage taken</Text>
               </View>
-            </>
-          ) : (
-            <View style={styles.noDataContainer}>
-              <Text style={styles.noDataText}>No commander damage taken</Text>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        )}
 
         {/* POISON COUNTER - Easy to remove: delete this entire chartContainer block */}
         {poisonEnabled && (
@@ -447,9 +451,11 @@ export default function EndGameScreen({ route, navigation }) {
                 <Text style={[styles.statText, { color: '#fff' }]}>
                   Main Life Damage: {player.mainLifeDamage}
                 </Text>
-                <Text style={[styles.statText, { color: '#fff' }]}>
-                  Commander Damage: {player.commanderDamage}
-                </Text>
+                {gameMode === 'commander' && (
+                  <Text style={[styles.statText, { color: '#fff' }]}>
+                    Commander Damage: {player.commanderDamage}
+                  </Text>
+                )}
                 {/* POISON COUNTER - Easy to remove: delete this Text block */}
                 {poisonEnabled && (
                   <Text style={[styles.statText, { color: '#fff' }]}>
@@ -457,7 +463,7 @@ export default function EndGameScreen({ route, navigation }) {
                   </Text>
                 )}
                 <Text style={[styles.statText, { color: '#fff' }]}>
-                  Total Damage: {player.mainLifeDamage + player.commanderDamage + (poisonEnabled ? (player.poisonCounters || 0) : 0)}
+                  Total Damage: {player.mainLifeDamage + (gameMode === 'commander' ? player.commanderDamage : 0) + (poisonEnabled ? (player.poisonCounters || 0) : 0)}
                 </Text>
               </View>
                 </View>
