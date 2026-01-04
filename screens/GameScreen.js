@@ -32,7 +32,9 @@ export default function GameScreen({ route, navigation }) {
   const { playerCount, players: initialPlayers, gameMode = 'commander' } = route.params;
   const [players, setPlayers] = useState([]);
   const [duelMode, setDuelMode] = useState({});
+  const [commanderOnlyMode, setCommanderOnlyMode] = useState({}); // Red mode - only affects commander damage
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
+  const longPressTimerRef = useRef({});
   const [gameStartTime, setGameStartTime] = useState(null);
   const [isPaused, setIsPaused] = useState(false);
   const [pausedTime, setPausedTime] = useState(0);
@@ -178,15 +180,21 @@ export default function GameScreen({ route, navigation }) {
         if (poisonEnabled && p.showPoison) {
           // Poison mode: adjust poison counters (max 10)
           newPoisonCounters = Math.max(0, Math.min(10, p.poisonCounters + amount));
+        } else if (commanderOnlyMode[p.id]) {
+          // Red mode: only adjust commander damage (21), never increase
+          if (amount < 0) {
+            newCommanderDamage = Math.max(0, p.commanderDamage + amount);
+          }
+          // If amount > 0, do nothing (commander damage can never go up)
         } else if (duelMode[p.id]) {
-          // Duel mode: adjust both life and commander damage
-          newLife = Math.max(0, p.life + amount);
-          newCommanderDamage = Math.max(0, p.commanderDamage + amount);
-        } else if (p.showCommander) {
-          // Commander mode: adjust commander damage only
-          newCommanderDamage = Math.max(0, p.commanderDamage + amount);
+          // Black mode (dual): adjust both main life (40) and commander damage (21) together
+          // Commander damage can never go up, only down
+          if (amount < 0) {
+            newCommanderDamage = Math.max(0, p.commanderDamage + amount);
+          }
+          newLife = Math.max(0, p.life + amount); // Main life can increase or decrease
         } else {
-          // Normal mode: adjust life only
+          // Default mode: only adjust main life (40)
           newLife = Math.max(0, p.life + amount);
         }
 
@@ -203,10 +211,58 @@ export default function GameScreen({ route, navigation }) {
   };
 
   const toggleDuel = (playerId) => {
-    setDuelMode(prev => ({
-      ...prev,
-      [playerId]: !prev[playerId]
-    }));
+    // Quick press behavior:
+    // - If in red mode (commander-only), reset to default (only main life)
+    // - Otherwise, toggle duel mode (black - both life and commander)
+    if (commanderOnlyMode[playerId]) {
+      // Reset to default: exit both red mode and duel mode
+      setCommanderOnlyMode(prev => ({
+        ...prev,
+        [playerId]: false
+      }));
+      setDuelMode(prev => ({
+        ...prev,
+        [playerId]: false
+      }));
+    } else {
+      // Toggle duel mode (black - both life and commander)
+      setDuelMode(prev => ({
+        ...prev,
+        [playerId]: !prev[playerId]
+      }));
+      // Exit commander-only mode when toggling duel
+      setCommanderOnlyMode(prev => ({
+        ...prev,
+        [playerId]: false
+      }));
+    }
+  };
+
+  const handleCommanderLongPress = (playerId) => {
+    // Start 2 second timer
+    longPressTimerRef.current[playerId] = setTimeout(() => {
+      // Toggle commander-only mode (red mode)
+      setCommanderOnlyMode(prev => ({
+        ...prev,
+        [playerId]: !prev[playerId]
+      }));
+      // Exit duel mode when entering commander-only mode
+      if (!commanderOnlyMode[playerId]) {
+        setDuelMode(prev => ({
+          ...prev,
+          [playerId]: false
+        }));
+      }
+      longPressTimerRef.current[playerId] = null;
+    }, 2000);
+  };
+
+  const handleCommanderPressOut = (playerId) => {
+    // Cancel long press if user releases before 2 seconds
+    if (longPressTimerRef.current[playerId]) {
+      clearTimeout(longPressTimerRef.current[playerId]);
+      longPressTimerRef.current[playerId] = null;
+    }
   };
 
 
@@ -496,7 +552,7 @@ export default function GameScreen({ route, navigation }) {
     .map(({ player }) => player);
 
   // Animated Gradient Card Component (defined inside to access functions)
-  const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, gradientAnimation, styles, togglePoison, gameMode }) => {
+  const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, commanderOnlyMode, handleCommanderLongPress, handleCommanderPressOut, gradientAnimation, styles, togglePoison, gameMode }) => {
     const gradientSets = getPlayerGradientSets(player);
     const [gradientColors, setGradientColors] = useState(gradientSets[0]);
     const [animationProgress, setAnimationProgress] = useState(0);
@@ -575,10 +631,19 @@ export default function GameScreen({ route, navigation }) {
             <TouchableOpacity
               style={styles.commanderDamageContainer}
               onPress={() => toggleDuel(player.id)}
+              onLongPress={() => handleCommanderLongPress(player.id)}
+              onPressOut={() => handleCommanderPressOut(player.id)}
               activeOpacity={0.7}
+              delayLongPress={2000}
               hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             >
-              <Text style={[styles.commanderDamageText, textStyle, isTop && styles.rotatedText, duelMode[player.id] && styles.commanderDamageActive]}>
+              <Text style={[
+                styles.commanderDamageText, 
+                textStyle, 
+                isTop && styles.rotatedText, 
+                duelMode[player.id] && styles.commanderDamageActive,
+                commanderOnlyMode[player.id] && styles.commanderDamageRed
+              ]}>
                 {player.commanderDamage}
               </Text>
             </TouchableOpacity>
@@ -646,7 +711,10 @@ export default function GameScreen({ route, navigation }) {
         lifeChangeFeedback={lifeChangeFeedback}
         adjustLife={adjustLife}
         toggleCommander={toggleCommander}
-        toggleDuel={toggleDuel}
+            toggleDuel={toggleDuel}
+            commanderOnlyMode={commanderOnlyMode}
+            handleCommanderLongPress={handleCommanderLongPress}
+            handleCommanderPressOut={handleCommanderPressOut}
         duelMode={duelMode}
         gradientAnimation={animValue}
         styles={styles}
@@ -1031,6 +1099,10 @@ const styles = StyleSheet.create({
   commanderDamageActive: {
     opacity: 1,
     color: '#000',
+  },
+  commanderDamageRed: {
+    color: '#F44336', // Red color for commander-only mode
+    opacity: 1,
   },
   // POISON COUNTER - Easy to remove: delete these 3 style blocks
   poisonBadge: {
