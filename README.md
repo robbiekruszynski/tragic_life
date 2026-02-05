@@ -1,17 +1,19 @@
-# Tragic Life - MTG Commander Life Counter
+# Tragic Life – MTG Life Counter
 
-A mobile life counter app for Magic: The Gathering Commander format, built with React Native and Expo.
+A mobile life counter for Magic: The Gathering, built with React Native and Expo. Supports Commander and other constructed formats (Standard, Modern, Pioneer, Legacy, Vintage).
 
 ## Features
 
-- **Menu Screen**: Select number of players (2-6)
-- **Life Counter**: Starting life of 40, adjustable up/down
-- **Commander Damage**: Toggle to show/hide commander damage (starts at 21)
-- **Sync Mode**: Toggle to change both main life and commander damage simultaneously
-- **Player Customization**: Edit player names and select colors (White, Blue, Red, Black, Green, Grey)
-- **Landscape Orientation**: Optimized for landscape mode
-- **Full Screen**: Full screen rendering on mobile devices
-- **End Game Summary**: Pie charts showing total damage taken from main life and commander damage
+- **Menu**: Choose 2–4 players and game mode (Commander, Legacy, Modern, Pioneer, Standard, Vintage) via a scrollable wheel.
+- **Player Setup**: Enter player names and assign colors (White, Blue, Red, Black, Green, Grey) before starting.
+- **Life & damage**:
+  - **Commander**: 40 life, 21 commander damage. Tap commander damage to toggle duel mode (adjust life and commander together). Long-press (2s) for commander-only mode (red; adjust only commander damage).
+  - **Other formats**: 20 life, no commander damage.
+- **Poison counters**: Optional in Settings (gear). When enabled, per-player poison toggle and 0–10 poison counters.
+- **Game screen**: +/- life (and commander/poison when applicable), animated gradient cards, haptic feedback on life loss, screen kept awake in landscape.
+- **Timer**: Game duration with optional pause/resume in Settings.
+- **Tools**: Settings (gear) – Flip coin, Roll dice (D4–D100 with presets and custom sides), Pause/Resume timer, Enable/disable poison counters.
+- **End game**: Game duration, pie charts (main life damage; commander damage in Commander mode; poison if enabled), per-player stats, Share summary, Rematch, New Game.
 
 ## Setup
 
@@ -25,12 +27,11 @@ npm install
 npm start
 ```
 
-3. Run on Android:
+3. Run on a device or simulator:
 ```bash
 npm run android
 ```
-
-4. Run on iOS:
+or
 ```bash
 npm run ios
 ```
@@ -44,7 +45,7 @@ npm run ios
 npm install -g eas-cli
 ```
 
-2. Login to Expo:
+2. Log in to Expo:
 ```bash
 eas login
 ```
@@ -61,23 +62,23 @@ eas build --platform android
 
 ### iOS
 
-1. Follow the same steps as Android, then:
+Use the same EAS steps, then:
 ```bash
 eas build --platform ios
 ```
 
 ## Project Structure
 
-- `App.js` - Main app component with navigation
-- `screens/MenuScreen.js` - Menu screen for player selection
-- `screens/GameScreen.js` - Main game screen with life counters
-- `screens/EndGameScreen.js` - End game screen with statistics and pie charts
+- `App.js` – Root component and stack navigation (Menu → PlayerSetup → Game → EndGame).
+- `screens/MenuScreen.js` – Player count and game mode selection.
+- `screens/PlayerSetupScreen.js` – Player names and color selection.
+- `screens/GameScreen.js` – In-game life, commander/poison, timer, settings, dice/coin.
+- `screens/EndGameScreen.js` – Summary, pie charts, share, rematch, new game.
 
 ## Requirements
 
-- Node.js 16+ 
+- Node.js 16+
 - npm or yarn
-- Expo CLI
+- Expo (included via project dependencies)
 - For Android: Android Studio and Android SDK
 - For iOS: Xcode (macOS only)
-
