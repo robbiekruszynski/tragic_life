@@ -19,25 +19,22 @@ const WHEEL_ITEM_HEIGHT = 30;
 
 export default function MenuScreen({ navigation }) {
   const [playerCount, setPlayerCount] = useState(4);
-  const [gameMode, setGameMode] = useState('commander'); // 'commander', 'standard', 'modern', 'pioneer', 'legacy', or 'vintage'
+  const [gameMode, setGameMode] = useState('commander');
   const scrollViewRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
   const modes = ['commander', 'legacy', 'modern', 'pioneer', 'standard', 'vintage'];
-  const [selectedIndex, setSelectedIndex] = useState(0); // 0 = commander, 1 = legacy, 2 = modern, 3 = pioneer, 4 = standard, 5 = vintage
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Lock to landscape orientation when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
     }, [])
   );
 
-  // Update game mode when selected index changes
   useEffect(() => {
     setGameMode(modes[selectedIndex]);
   }, [selectedIndex]);
 
-  // Scroll to selected index on mount
   useEffect(() => {
     scrollToIndex(selectedIndex, false);
   }, []);
@@ -101,21 +98,16 @@ export default function MenuScreen({ navigation }) {
           <View style={styles.modeToggleContainer}>
             <Text style={styles.modeLabel}>Game Mode</Text>
             <View style={styles.wheelContainer}>
-              {/* Top gradient fade */}
               <LinearGradient
                 colors={['#1a1a1a', 'transparent']}
                 style={styles.wheelGradientTop}
                 pointerEvents="none"
               />
-              
-              {/* Bottom gradient fade */}
               <LinearGradient
                 colors={['transparent', '#1a1a1a']}
                 style={styles.wheelGradientBottom}
                 pointerEvents="none"
               />
-              
-              {/* Selection indicator */}
               <View style={styles.wheelSelector} />
               
               <ScrollView
@@ -129,7 +121,6 @@ export default function MenuScreen({ navigation }) {
                 onMomentumScrollEnd={handleScrollEnd}
                 scrollEventThrottle={16}
               >
-                {/* Spacer at top */}
                 <View style={{ height: WHEEL_ITEM_HEIGHT }} />
                 
                 {modes.map((mode, index) => (
@@ -142,8 +133,6 @@ export default function MenuScreen({ navigation }) {
                     </Text>
                   </View>
                 ))}
-                
-                {/* Spacer at bottom */}
                 <View style={{ height: WHEEL_ITEM_HEIGHT }} />
               </ScrollView>
             </View>

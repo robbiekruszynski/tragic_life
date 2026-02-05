@@ -30,14 +30,12 @@ export default function EndGameScreen({ route, navigation }) {
   const [dimensions, setDimensions] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const [gameDuration, setGameDuration] = useState(0);
 
-  // Allow all orientations when screen is focused (so user can rotate to portrait for easier reading)
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.unlockAsync();
     }, [])
   );
 
-  // Update dimensions on orientation change
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
       setDimensions({ width: window.width, height: window.height });
@@ -45,20 +43,16 @@ export default function EndGameScreen({ route, navigation }) {
     return () => subscription?.remove();
   }, []);
 
-  // Calculate final game duration when screen loads
   useEffect(() => {
     if (gameStartTime && gameEndTime) {
-      // Calculate the final duration using the exact end time from GameScreen
       const duration = Math.floor((gameEndTime - gameStartTime) / 1000);
       setGameDuration(duration);
     } else if (gameStartTime) {
-      // Fallback: use current time if end time not provided
       const duration = Math.floor((Date.now() - gameStartTime) / 1000);
       setGameDuration(duration);
     }
   }, [gameStartTime, gameEndTime]);
 
-  // Format duration as HH:MM:SS
   const formatDuration = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -70,14 +64,12 @@ export default function EndGameScreen({ route, navigation }) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Calculate responsive pie chart size
   const getPieChartSize = () => {
     const isPortrait = dimensions.height > dimensions.width;
     const maxSize = Math.min(dimensions.width - 40, isPortrait ? dimensions.height * 0.4 : 400);
-    return Math.max(250, maxSize); // Minimum 250, but responsive to screen
+    return Math.max(250, maxSize);
   };
 
-  // Share game data in human-readable format
   const shareGameData = async () => {
     try {
       const durationText = gameDuration > 0 ? `⏱️ Game Duration: ${formatDuration(gameDuration)}\n\n` : '';
@@ -121,9 +113,7 @@ export default function EndGameScreen({ route, navigation }) {
     }
   };
 
-  // Handle rematch - navigate to GameScreen with same players
   const handleRematch = () => {
-    // Reconstruct players array from gameData with names and colors
     const rematchPlayers = gameData.map((player, index) => ({
       id: index,
       name: player.name,
@@ -136,7 +126,6 @@ export default function EndGameScreen({ route, navigation }) {
     });
   };
 
-  // Generate gradient colors from selected colors (same logic as GameScreen)
   const getGradientColors = (selectedColors) => {
     if (!selectedColors || selectedColors.length === 0) {
       return [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color];
@@ -145,7 +134,6 @@ export default function EndGameScreen({ route, navigation }) {
     const colorArray = Array.isArray(selectedColors) ? selectedColors : [selectedColors];
     const colorValues = colorArray.map(c => COLORS[c]?.color || COLORS.grey.color);
     
-    // Helper to lighten a color
     const lightenColor = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
       const r = Math.min(255, (num >> 16) + Math.round((255 - (num >> 16)) * percent));
@@ -157,7 +145,6 @@ export default function EndGameScreen({ route, navigation }) {
       }).join('')}`;
     };
     
-    // Helper to darken a color
     const darkenColor = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
       const r = Math.max(0, (num >> 16) - Math.round((num >> 16) * percent));
@@ -175,17 +162,15 @@ export default function EndGameScreen({ route, navigation }) {
     } else if (colorValues.length === 2) {
       return [colorValues[0], colorValues[1], colorValues[0]];
     } else {
-      // Use all selected colors for the gradient
       return colorValues;
     }
   };
 
-  // Custom Gradient Pie Chart Component
   const GradientPieChart = ({ data, size, innerRadius, padAngle = 5 }) => {
     const total = data.reduce((sum, item) => sum + item.y, 0);
     const center = size / 2;
     const outerRadius = size / 2;
-    let currentAngle = -90; // Start at top
+    let currentAngle = -90;
     
     const createPath = (startAngle, endAngle, innerR, outerR) => {
       const startAngleRad = (startAngle * Math.PI) / 180;
@@ -254,7 +239,6 @@ export default function EndGameScreen({ route, navigation }) {
     );
   };
 
-  // Prepare data for pie charts - filter out zero values and add labels with values
   const mainLifeData = gameData
     .filter(player => player.mainLifeDamage > 0)
     .map((player) => {
@@ -277,7 +261,6 @@ export default function EndGameScreen({ route, navigation }) {
       };
     });
 
-  // POISON COUNTER - Easy to remove: delete this entire block
   const poisonData = poisonEnabled
     ? gameData
         .filter(player => player.poisonCounters > 0)
@@ -295,7 +278,6 @@ export default function EndGameScreen({ route, navigation }) {
   const totalCommanderDamage = commanderData.reduce((sum, item) => sum + item.y, 0);
   const totalPoisonDamage = poisonData.reduce((sum, item) => sum + item.y, 0);
 
-  // Format game mode name for display
   const getGameModeDisplay = () => {
     const modeMap = {
       'standard': 'Standard',
@@ -305,7 +287,7 @@ export default function EndGameScreen({ route, navigation }) {
       'vintage': 'Vintage',
       'commander': 'Commander',
     };
-    return modeMap[gameMode] || 'Commander'; // default
+    return modeMap[gameMode] || 'Commander';
   };
 
   return (
@@ -393,7 +375,6 @@ export default function EndGameScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* POISON COUNTER - Easy to remove: delete this entire chartContainer block */}
         {poisonEnabled && (
           <View style={styles.chartContainer}>
             <Text style={styles.chartTitle}>Poison Counters</Text>
@@ -433,7 +414,6 @@ export default function EndGameScreen({ route, navigation }) {
 
         <View style={styles.statsContainer}>
           {gameData.map((player, index) => {
-            // Use the same gradient colors as the game screen
             const gradientColors = getGradientColors(player.colors);
             return (
               <LinearGradient
@@ -456,7 +436,6 @@ export default function EndGameScreen({ route, navigation }) {
                     Commander Damage: {player.commanderDamage}
                   </Text>
                 )}
-                {/* POISON COUNTER - Easy to remove: delete this Text block */}
                 {poisonEnabled && (
                   <Text style={[styles.statText, { color: '#fff' }]}>
                     Poison Counters: {player.poisonCounters || 0}

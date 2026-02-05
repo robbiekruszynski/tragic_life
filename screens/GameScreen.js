@@ -32,49 +32,41 @@ export default function GameScreen({ route, navigation }) {
   const { playerCount, players: initialPlayers, gameMode = 'commander' } = route.params;
   const [players, setPlayers] = useState([]);
   const [duelMode, setDuelMode] = useState({});
-  const [commanderOnlyMode, setCommanderOnlyMode] = useState({}); // Red mode - only affects commander damage
+  const [commanderOnlyMode, setCommanderOnlyMode] = useState({});
   const [lifeChangeFeedback, setLifeChangeFeedback] = useState({ playerId: null, amount: 0 });
   const longPressTimerRef = useRef({});
   const [gameStartTime, setGameStartTime] = useState(null);
   const [isPaused, setIsPaused] = useState(false);
   const [pausedTime, setPausedTime] = useState(0);
   const [totalPausedDuration, setTotalPausedDuration] = useState(0);
-  // POISON COUNTER - Easy to remove: delete these 2 lines
   const [poisonEnabled, setPoisonEnabled] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDiceModal, setShowDiceModal] = useState(false);
   const [diceSides, setDiceSides] = useState(20);
   
-  // Animation values for gradient color shifts
   const gradientAnimations = useRef(
     Array.from({ length: 6 }, () => new Animated.Value(0))
   ).current;
   
-  // Ref to store timeout ID for clearing feedback
   const feedbackTimeoutRef = useRef(null);
-  // Ref to track current feedback state for sign change detection
   const currentFeedbackRef = useRef({ playerId: null, amount: 0 });
 
-  // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      activateKeepAwakeAsync(); // Keep screen awake while game is active
+      activateKeepAwakeAsync();
       
       return () => {
-        deactivateKeepAwake(); // Allow screen to sleep when leaving game screen
+        deactivateKeepAwake();
       };
     }, [])
   );
 
   useEffect(() => {
-    // Determine initial values based on game mode
-    // Standard, Modern, Pioneer, Legacy, and Vintage operate the same way (20 life, no commander)
     const nonCommanderModes = ['standard', 'modern', 'pioneer', 'legacy', 'vintage'];
     const initialLife = nonCommanderModes.includes(gameMode) ? 20 : 40;
     const initialCommanderDamage = nonCommanderModes.includes(gameMode) ? 0 : 21;
     
-    // Use provided players from setup screen, or create default players
     if (initialPlayers && initialPlayers.length > 0) {
       const playersWithGameData = initialPlayers.map(p => ({
         ...p,
@@ -83,17 +75,14 @@ export default function GameScreen({ route, navigation }) {
         showCommander: false,
         initialLife: initialLife,
         initialCommanderDamage: initialCommanderDamage,
-        // POISON COUNTER - Easy to remove: delete these 2 lines
         poisonCounters: 0,
         showPoison: false,
       }));
       setPlayers(playersWithGameData);
-      // Set game start time when players are initialized
       if (!gameStartTime) {
         setGameStartTime(Date.now());
       }
     } else {
-      // Fallback: create default players if no setup data
       const defaultPlayers = Array.from({ length: playerCount || 4 }, (_, i) => ({
         id: i,
         name: `Player ${i + 1}`,
@@ -103,19 +92,16 @@ export default function GameScreen({ route, navigation }) {
         colors: ['grey'],
         initialLife: initialLife,
         initialCommanderDamage: initialCommanderDamage,
-        // POISON COUNTER - Easy to remove: delete these 2 lines
         poisonCounters: 0,
         showPoison: false,
       }));
       setPlayers(defaultPlayers);
-      // Set game start time when players are initialized
       if (!gameStartTime) {
         setGameStartTime(Date.now());
       }
     }
   }, [playerCount, initialPlayers, gameMode]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (feedbackTimeoutRef.current) {
@@ -125,21 +111,17 @@ export default function GameScreen({ route, navigation }) {
   }, []);
 
   const adjustLife = (playerId, amount) => {
-    // HAPTIC FEEDBACK - Easy to remove: delete this entire try-catch block
     if (amount < 0) {
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch (error) {
-        // Haptics not available on this device, silently fail
       }
     }
 
-    // Clear existing timeout if any
     if (feedbackTimeoutRef.current) {
       clearTimeout(feedbackTimeoutRef.current);
     }
 
-    // Check for sign change using ref (synchronous check)
     const currentFeedback = currentFeedbackRef.current;
     let signChanged = false;
     let newAmount;
@@ -147,7 +129,6 @@ export default function GameScreen({ route, navigation }) {
     if (currentFeedback.playerId === playerId) {
       const prevAmount = currentFeedback.amount;
       newAmount = prevAmount + amount;
-      // Check if sign changed (crossed zero)
       if ((prevAmount > 0 && newAmount <= 0) || (prevAmount < 0 && newAmount >= 0)) {
         signChanged = true;
       }
@@ -155,14 +136,8 @@ export default function GameScreen({ route, navigation }) {
       newAmount = amount;
     }
 
-    // Update ref synchronously
     currentFeedbackRef.current = { playerId, amount: newAmount };
-
-    // Update state
     setLifeChangeFeedback({ playerId, amount: newAmount });
-
-    // Set timeout to reset feedback after user stops clicking
-    // Use 5 seconds for all adjustments
     const timeoutDuration = 5000;
     feedbackTimeoutRef.current = setTimeout(() => {
       setLifeChangeFeedback({ playerId: null, amount: 0 });
@@ -176,25 +151,18 @@ export default function GameScreen({ route, navigation }) {
         let newCommanderDamage = p.commanderDamage;
         let newPoisonCounters = p.poisonCounters;
         
-        // POISON COUNTER - Easy to remove: delete this entire if block
         if (poisonEnabled && p.showPoison) {
-          // Poison mode: adjust poison counters (max 10)
           newPoisonCounters = Math.max(0, Math.min(10, p.poisonCounters + amount));
         } else if (commanderOnlyMode[p.id]) {
-          // Red mode: only adjust commander damage (21), never increase
           if (amount < 0) {
             newCommanderDamage = Math.max(0, p.commanderDamage + amount);
           }
-          // If amount > 0, do nothing (commander damage can never go up)
         } else if (duelMode[p.id]) {
-          // Black mode (dual): adjust both main life (40) and commander damage (21) together
-          // Commander damage can never go up, only down
           if (amount < 0) {
             newCommanderDamage = Math.max(0, p.commanderDamage + amount);
           }
-          newLife = Math.max(0, p.life + amount); // Main life can increase or decrease
+          newLife = Math.max(0, p.life + amount);
         } else {
-          // Default mode: only adjust main life (40)
           newLife = Math.max(0, p.life + amount);
         }
 
@@ -211,11 +179,7 @@ export default function GameScreen({ route, navigation }) {
   };
 
   const toggleDuel = (playerId) => {
-    // Quick press behavior:
-    // - If in red mode (commander-only), reset to default (only main life)
-    // - Otherwise, toggle duel mode (black - both life and commander)
     if (commanderOnlyMode[playerId]) {
-      // Reset to default: exit both red mode and duel mode
       setCommanderOnlyMode(prev => ({
         ...prev,
         [playerId]: false
@@ -225,12 +189,10 @@ export default function GameScreen({ route, navigation }) {
         [playerId]: false
       }));
     } else {
-      // Toggle duel mode (black - both life and commander)
       setDuelMode(prev => ({
         ...prev,
         [playerId]: !prev[playerId]
       }));
-      // Exit commander-only mode when toggling duel
       setCommanderOnlyMode(prev => ({
         ...prev,
         [playerId]: false
@@ -239,14 +201,11 @@ export default function GameScreen({ route, navigation }) {
   };
 
   const handleCommanderLongPress = (playerId) => {
-    // Start 2 second timer
     longPressTimerRef.current[playerId] = setTimeout(() => {
-      // Toggle commander-only mode (red mode)
       setCommanderOnlyMode(prev => ({
         ...prev,
         [playerId]: !prev[playerId]
       }));
-      // Exit duel mode when entering commander-only mode
       if (!commanderOnlyMode[playerId]) {
         setDuelMode(prev => ({
           ...prev,
@@ -258,7 +217,6 @@ export default function GameScreen({ route, navigation }) {
   };
 
   const handleCommanderPressOut = (playerId) => {
-    // Cancel long press if user releases before 2 seconds
     if (longPressTimerRef.current[playerId]) {
       clearTimeout(longPressTimerRef.current[playerId]);
       longPressTimerRef.current[playerId] = null;
@@ -275,13 +233,10 @@ export default function GameScreen({ route, navigation }) {
     }));
   };
 
-  // POISON COUNTER - Easy to remove: delete this entire function
   const togglePoison = (playerId) => {
     setPlayers(players.map(p => {
       if (p.id === playerId) {
         const newShowPoison = !p.showPoison;
-        // When toggling poison on for the first time, set counter to 0 (starting value)
-        // Otherwise, preserve the existing counter value
         if (newShowPoison && p.poisonCounters === undefined) {
           return { ...p, showPoison: newShowPoison, poisonCounters: 0 };
         }
@@ -315,11 +270,9 @@ export default function GameScreen({ route, navigation }) {
       colors: p.colors,
       mainLifeDamage: p.initialLife - p.life,
       commanderDamage: p.initialCommanderDamage - p.commanderDamage,
-      // POISON COUNTER - Easy to remove: delete this line
       poisonCounters: p.poisonCounters || 0,
     }));
     const gameEndTime = Date.now();
-    // Adjust game start time by subtracting total paused duration
     const adjustedGameStartTime = gameStartTime 
       ? gameStartTime + totalPausedDuration + (isPaused ? (Date.now() - pausedTime) : 0)
       : gameEndTime;
@@ -327,17 +280,14 @@ export default function GameScreen({ route, navigation }) {
       gameData,
       gameStartTime: adjustedGameStartTime,
       gameEndTime: gameEndTime,
-      poisonEnabled, // POISON COUNTER - Easy to remove: delete this line
-      gameMode, // Pass game mode to display on end screen
+      poisonEnabled,
+      gameMode,
     });
   };
 
-  // Generate gradient sets from player's selected colors
   const getPlayerGradientSets = (player) => {
     const selectedColors = Array.isArray(player.colors) ? player.colors : [player.colors || 'grey'];
     const colorValues = selectedColors.map(c => COLORS[c]?.color || COLORS.grey.color);
-    
-    // If no colors or only grey, use default gradient
     if (selectedColors.length === 0 || (selectedColors.length === 1 && selectedColors[0] === 'grey')) {
       return [
         [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color],
@@ -345,8 +295,6 @@ export default function GameScreen({ route, navigation }) {
         [COLORS.grey.color, COLORS.grey.color, COLORS.grey.color],
       ];
     }
-    
-    // Helper to lighten a color
     const lightenColor = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
       const r = Math.min(255, (num >> 16) + Math.round((255 - (num >> 16)) * percent));
@@ -357,8 +305,6 @@ export default function GameScreen({ route, navigation }) {
         return hex.length === 1 ? '0' + hex : hex;
       }).join('')}`;
     };
-    
-    // Helper to darken a color
     const darkenColor = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
       const r = Math.max(0, (num >> 16) - Math.round((num >> 16) * percent));
@@ -369,12 +315,8 @@ export default function GameScreen({ route, navigation }) {
         return hex.length === 1 ? '0' + hex : hex;
       }).join('')}`;
     };
-    
-    // Generate 3 gradient sets for animation
     const gradientSets = [];
-    
     if (colorValues.length === 1) {
-      // Single color: create variations
       const baseColor = colorValues[0];
       gradientSets.push([
         darkenColor(baseColor, 0.2),
@@ -392,7 +334,6 @@ export default function GameScreen({ route, navigation }) {
         darkenColor(baseColor, 0.15),
       ]);
     } else if (colorValues.length === 2) {
-      // Two colors: create variations
       const [color1, color2] = colorValues;
       gradientSets.push([color1, color2, color1]);
       gradientSets.push([
@@ -406,11 +347,7 @@ export default function GameScreen({ route, navigation }) {
         color2,
       ]);
     } else {
-      // Three or more colors: use all colors and create variations
-      // For animation, we'll create variations that cycle through all colors
-      gradientSets.push(colorValues); // Use all colors
-      
-      // Create variations by slightly adjusting some colors
+      gradientSets.push(colorValues);
       const variation1 = colorValues.map((color, index) => 
         index % 2 === 0 ? lightenColor(color, 0.1) : color
       );
@@ -425,7 +362,6 @@ export default function GameScreen({ route, navigation }) {
     return gradientSets;
   };
 
-  // Get animated gradient colors based on animation value
   const getAnimatedGradient = (player, animValue) => {
     const gradientSets = getPlayerGradientSets(player);
     const setCount = gradientSets.length;
@@ -435,8 +371,6 @@ export default function GameScreen({ route, navigation }) {
     
     const currentSet = gradientSets[index];
     const nextSet = gradientSets[nextIndex];
-    
-    // Interpolate between current and next gradient set
     return currentSet.map((color, i) => {
       const currentColor = color;
       const nextColor = nextSet[i] || currentSet[i];
@@ -444,7 +378,6 @@ export default function GameScreen({ route, navigation }) {
     });
   };
 
-  // Helper function to interpolate between two hex colors
   const interpolateColor = (color1, color2, factor) => {
     const hex1 = color1.replace('#', '');
     const hex2 = color2.replace('#', '');
@@ -467,14 +400,13 @@ export default function GameScreen({ route, navigation }) {
     }).join('')}`;
   };
 
-  // Start gradient animations
   useEffect(() => {
     const animations = gradientAnimations.map((animValue, index) => {
       return Animated.loop(
         Animated.timing(animValue, {
           toValue: 1,
-          duration: 8000 + (index * 1000), // Stagger animations slightly
-          useNativeDriver: false, // Colors can't use native driver
+          duration: 8000 + (index * 1000),
+          useNativeDriver: false,
         })
       );
     });
@@ -483,7 +415,6 @@ export default function GameScreen({ route, navigation }) {
   }, []);
 
   const getPlayerStyle = (player) => {
-    // Use first color for border, or grey if none selected
     const playerColors = player.colors ? (Array.isArray(player.colors) ? player.colors : [player.colors]) : ['grey'];
     const firstColor = playerColors.length > 0 ? playerColors[0] : 'grey';
     const colorInfo = COLORS[firstColor] || COLORS.grey;
@@ -493,7 +424,6 @@ export default function GameScreen({ route, navigation }) {
   };
 
   const getTextStyle = (player) => {
-    // Use white text for all players to contrast with gradients
     return { color: '#ffffff' };
   };
 
@@ -503,11 +433,9 @@ export default function GameScreen({ route, navigation }) {
       if (p.id === playerId) {
         const currentColors = Array.isArray(p.colors) ? p.colors : (p.colors ? [p.colors] : ['grey']);
         if (currentColors.includes(colorKey)) {
-          // Remove color if already selected, but keep at least one color
           const newColors = currentColors.filter(c => c !== colorKey);
           return { ...p, colors: newColors.length > 0 ? newColors : ['grey'] };
         } else {
-          // Add color if not selected
           return { ...p, colors: [...currentColors, colorKey] };
         }
       }
@@ -515,30 +443,22 @@ export default function GameScreen({ route, navigation }) {
     }));
   };
 
-  // Calculate grid layout based on player count
   const getPlayerPosition = (index, total) => {
     if (total === 2) {
-      // 2 players: one top, one bottom
       return { row: index === 0 ? 0 : 1, col: 0, isTop: index === 0 };
     } else if (total === 3) {
-      // 3 players: 2 top, 1 bottom
       if (index < 2) return { row: 0, col: index, isTop: true };
       return { row: 1, col: 0, isTop: false };
     } else if (total === 4) {
-      // 4 players: 2x2 grid
-      // Player 0 (top left), Player 1 (top right), Player 2 (bottom left), Player 3 (bottom right)
       return { row: index < 2 ? 0 : 1, col: index % 2, isTop: index < 2 };
     } else if (total === 5) {
-      // 5 players: 3 top, 2 bottom
       if (index < 3) return { row: 0, col: index, isTop: true };
       return { row: 1, col: index - 3, isTop: false };
     } else {
-      // 6 players: 3x2 grid
       return { row: index < 3 ? 0 : 1, col: index % 3, isTop: index < 3 };
     }
   };
 
-  // Group players by row, sorted by column
   const topPlayers = players
     .map((player, i) => ({ player, pos: getPlayerPosition(i, players.length) }))
     .filter(({ pos }) => pos.isTop)
@@ -551,14 +471,12 @@ export default function GameScreen({ route, navigation }) {
     .sort((a, b) => a.pos.col - b.pos.col)
     .map(({ player }) => player);
 
-  // Animated Gradient Card Component (defined inside to access functions)
   const AnimatedGradientCard = ({ player, isTop, playerStyle, textStyle, showFeedback, lifeChangeFeedback, adjustLife, toggleCommander, toggleDuel, duelMode, commanderOnlyMode, handleCommanderLongPress, handleCommanderPressOut, gradientAnimation, styles, togglePoison, gameMode }) => {
     const gradientSets = getPlayerGradientSets(player);
     const [gradientColors, setGradientColors] = useState(gradientSets[0]);
     const [animationProgress, setAnimationProgress] = useState(0);
 
     useEffect(() => {
-      // Update animation progress based on time
       const startTime = Date.now();
       const duration = 8000 + (player.id * 1000);
       
@@ -569,7 +487,7 @@ export default function GameScreen({ route, navigation }) {
         
         const newColors = getAnimatedGradient(player, progress);
         setGradientColors(newColors);
-      }, 50); // Update every 50ms for smooth animation
+      }, 50);
       
       return () => clearInterval(interval);
     }, [player.id, player.colors]);
@@ -582,14 +500,11 @@ export default function GameScreen({ route, navigation }) {
         end={{ x: 1, y: 1 }}
         style={[styles.playerCard, playerStyle]}
       >
-        {/* Rotate only visual content for top players - MUST have pointerEvents: 'none' */}
         <View style={isTop ? styles.rotatedVisualContent : styles.visualContent} pointerEvents="none">
-          {/* Player Name - Top Right */}
           <View style={[styles.topSection, isTop && styles.topSectionRotated]} pointerEvents="none">
             <View style={styles.nameContainer} pointerEvents="none">
               <View style={styles.nameRow} pointerEvents="none">
                 <Text style={[styles.playerName, textStyle]} pointerEvents="none">{player.name}</Text>
-                {/* POISON COUNTER - Easy to remove: delete this entire View block */}
                 {poisonEnabled && player.poisonCounters > 0 && (
                   <View style={styles.poisonBadge} pointerEvents="none">
                     <Text style={[styles.poisonBadgeText, textStyle]} pointerEvents="none">
@@ -600,8 +515,6 @@ export default function GameScreen({ route, navigation }) {
               </View>
             </View>
           </View>
-          
-          {/* Life Adjustment Feedback - Opposite side of name */}
           {showFeedback && (
             <View style={[
               styles.feedbackPopup, 
@@ -613,19 +526,14 @@ export default function GameScreen({ route, navigation }) {
               </Text>
             </View>
           )}
-
-          {/* Life/Commander/Poison Counter - Right below name */}
           <View style={[styles.lifeContainer, isTop && styles.lifeContainerTop]} pointerEvents="none">
             <View style={[styles.lifeValueContainer, isTop && styles.lifeValueContainerTop]} pointerEvents="none">
               <Text style={[styles.lifeValue, textStyle]} pointerEvents="none">
-                {/* POISON COUNTER - Easy to remove: change this line to remove poison mode */}
                 {poisonEnabled && player.showPoison ? player.poisonCounters : player.life}
               </Text>
             </View>
           </View>
         </View>
-
-        {/* Commander Damage - RENDERED SEPARATELY, clickable to toggle dual mode (only in commander mode) */}
         {gameMode === 'commander' && (
           <View style={[styles.commanderDamageWrapper, isTop && styles.commanderDamageWrapperTop]} pointerEvents="box-none">
             <TouchableOpacity
@@ -649,8 +557,6 @@ export default function GameScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         )}
-
-        {/* Buttons - RENDERED LAST, completely separate layer, NEVER rotated */}
         <View style={[styles.buttonContainer, isTop && styles.buttonContainerTop]} pointerEvents="box-none">
           <View style={styles.lifeControlsRow} pointerEvents="box-none">
             <View style={styles.lifeButtons} pointerEvents="box-none">
@@ -674,7 +580,6 @@ export default function GameScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
             <View style={styles.toggleButtons} pointerEvents="box-none">
-              {/* POISON COUNTER - Easy to remove: delete this entire TouchableOpacity block */}
               {poisonEnabled && (
                 <TouchableOpacity
                   style={[styles.poisonToggle, player.showPoison && styles.poisonToggleActive]}
@@ -725,9 +630,8 @@ export default function GameScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+      <View style={styles.container}>
       <View style={styles.gameGrid}>
-        {/* Top Row - Players facing from top */}
         <View style={styles.row}>
           {topPlayers.map((player, index) => (
             <React.Fragment key={player.id}>
@@ -736,11 +640,7 @@ export default function GameScreen({ route, navigation }) {
             </React.Fragment>
           ))}
         </View>
-
-        {/* Center spacer (optional, for visual separation) */}
         <View style={styles.centerSpacer} />
-
-        {/* Bottom Row - Players facing from bottom */}
         <View style={styles.row}>
           {bottomPlayers.map((player, index) => (
             <React.Fragment key={player.id}>
@@ -754,16 +654,12 @@ export default function GameScreen({ route, navigation }) {
       <TouchableOpacity style={styles.endGameButton} onPress={handleEndGame}>
         <Text style={styles.endGameButtonText}>END</Text>
       </TouchableOpacity>
-
-      {/* POISON COUNTER - Easy to remove: delete this entire TouchableOpacity block */}
       <TouchableOpacity 
         style={styles.settingsButton} 
         onPress={() => setShowSettings(true)}
       >
         <Text style={styles.settingsButtonText}>⚙</Text>
       </TouchableOpacity>
-
-      {/* POISON COUNTER - Easy to remove: delete this entire overlay block */}
       {showSettings && (
         <View style={styles.modalOverlay}>
           <TouchableOpacity 
@@ -839,8 +735,6 @@ export default function GameScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Dice Roll Modal */}
       {showDiceModal && (
         <View style={styles.modalOverlay}>
           <TouchableOpacity 
@@ -857,8 +751,6 @@ export default function GameScreen({ route, navigation }) {
               
               <View style={styles.diceSelectorContainer}>
                 <Text style={styles.diceLabel}>Number of sides: {diceSides}</Text>
-                
-                {/* Quick preset buttons for common dice */}
                 <View style={styles.dicePresetsRow}>
                   <TouchableOpacity
                     style={[styles.dicePresetButton, diceSides === 4 && styles.dicePresetButtonActive]}
@@ -903,8 +795,6 @@ export default function GameScreen({ route, navigation }) {
                     <Text style={styles.dicePresetText}>D100</Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* Manual input with +/- buttons */}
                 <View style={styles.diceInputContainer}>
                   <Text style={styles.diceInputLabel}>Or enter custom:</Text>
                   <View style={styles.diceButtonsRow}>
@@ -1101,10 +991,9 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   commanderDamageRed: {
-    color: '#F44336', // Red color for commander-only mode
+    color: '#F44336',
     opacity: 1,
   },
-  // POISON COUNTER - Easy to remove: delete these 3 style blocks
   poisonBadge: {
     backgroundColor: 'rgba(156, 39, 176, 0.8)',
     paddingHorizontal: 6,
@@ -1317,7 +1206,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
-  // POISON COUNTER - Easy to remove: delete these 3 style blocks
   poisonToggle: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -1361,7 +1249,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  // POISON COUNTER - Easy to remove: delete these 2 style blocks
   settingsButton: {
     position: 'absolute',
     bottom: '47%',
@@ -1384,7 +1271,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  // POISON COUNTER - Easy to remove: delete these 2 style blocks
   modalOverlay: {
     position: 'absolute',
     top: 0,

@@ -28,14 +28,13 @@ export default function PlayerSetupScreen({ route, navigation }) {
   const [players, setPlayers] = useState([]);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
 
-  // Lock to landscape orientation and keep screen awake when screen is focused
   useFocusEffect(
     React.useCallback(() => {
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      activateKeepAwakeAsync(); // Keep screen awake while setting up players
+      activateKeepAwakeAsync();
       
       return () => {
-        deactivateKeepAwake(); // Allow screen to sleep when leaving setup screen
+        deactivateKeepAwake();
       };
     }, [])
   );
@@ -49,7 +48,6 @@ export default function PlayerSetupScreen({ route, navigation }) {
     setPlayers(initialPlayers);
   }, [playerCount]);
 
-  // Calculate grid layout based on player count (same logic as GameScreen)
   const getPlayerPosition = (index, total) => {
     if (total === 2) {
       return { row: index === 0 ? 0 : 1, col: 0, isTop: index === 0 };
@@ -78,11 +76,9 @@ export default function PlayerSetupScreen({ route, navigation }) {
         if (p.id === playerId) {
           const currentColors = Array.isArray(p.colors) ? p.colors : [p.colors];
           if (currentColors.includes(colorKey)) {
-            // Remove color if already selected
             const newColors = currentColors.filter(c => c !== colorKey);
             return { ...p, colors: newColors };
           } else {
-            // Add color if not selected
             return { ...p, colors: [...currentColors, colorKey] };
           }
         }
@@ -95,16 +91,14 @@ export default function PlayerSetupScreen({ route, navigation }) {
     navigation.navigate('Game', { players, gameMode });
   };
 
-  // Generate gradient colors from selected colors (same logic as GameScreen)
   const getGradientColors = (selectedColors) => {
     if (!selectedColors || selectedColors.length === 0) {
-      return ['#1a1a1a', '#2a2a2a', '#1a1a1a']; // Dark gradient when no colors selected
+      return ['#1a1a1a', '#2a2a2a', '#1a1a1a'];
     }
     
     const colorArray = Array.isArray(selectedColors) ? selectedColors : [selectedColors];
     const colorValues = colorArray.map(c => COLORS[c]?.color || COLORS.grey.color);
     
-    // Helper to lighten a color
     const lightenColor = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
       const r = Math.min(255, (num >> 16) + Math.round((255 - (num >> 16)) * percent));
@@ -116,7 +110,6 @@ export default function PlayerSetupScreen({ route, navigation }) {
       }).join('')}`;
     };
     
-    // Helper to darken a color
     const darkenColor = (hex, percent) => {
       const num = parseInt(hex.replace('#', ''), 16);
       const r = Math.max(0, (num >> 16) - Math.round((num >> 16) * percent));
@@ -134,13 +127,10 @@ export default function PlayerSetupScreen({ route, navigation }) {
     } else if (colorValues.length === 2) {
       return [colorValues[0], colorValues[1], colorValues[0]];
     } else {
-      // Use all selected colors for the gradient
-      // LinearGradient will create smooth transitions between all colors
       return colorValues;
     }
   };
 
-  // Group players by row
   const topPlayers = players
     .map((player, i) => ({ player, pos: getPlayerPosition(i, players.length) }))
     .filter(({ pos }) => pos.isTop)
@@ -166,12 +156,9 @@ export default function PlayerSetupScreen({ route, navigation }) {
         end={{ x: 1, y: 1 }}
         style={[styles.playerCard, isTop && styles.playerCardRotated]}
       >
-        {/* Rotate only visual content for top players - just for display */}
         <View style={isTop ? styles.rotatedVisualContent : styles.visualContent} pointerEvents="none">
-          {/* Empty visual content - name is handled separately */}
         </View>
 
-        {/* Name Editing Section - Separate layer, always accessible */}
         <View style={[styles.nameContainerWrapper, isTop && styles.nameContainerWrapperTop]} pointerEvents="box-none">
           <View style={styles.nameContainerInner} pointerEvents="auto">
             {isEditing ? (
@@ -197,10 +184,8 @@ export default function PlayerSetupScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Setup Controls - RENDERED LAST, completely separate layer, NEVER rotated */}
         <View style={[styles.buttonContainer, isTop && styles.buttonContainerTop]} pointerEvents="box-none">
           <View style={styles.setupControlsRow} pointerEvents="box-none">
-            {/* Color Selection */}
             <View style={styles.colorSelectorContainer} pointerEvents="box-none">
               <Text style={[styles.colorLabel, isTop && styles.rotatedText]}>Colors:</Text>
               <View style={styles.colorGrid} pointerEvents="box-none">
@@ -234,7 +219,6 @@ export default function PlayerSetupScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.gameGrid}>
-        {/* Top Row - Players facing from top */}
         <View style={styles.row}>
           {topPlayers.map((player, index) => (
             <React.Fragment key={player.id}>
@@ -244,10 +228,8 @@ export default function PlayerSetupScreen({ route, navigation }) {
           ))}
         </View>
 
-        {/* Center spacer */}
         <View style={styles.centerSpacer} />
 
-        {/* Bottom Row - Players facing from bottom */}
         <View style={styles.row}>
           {bottomPlayers.map((player, index) => (
             <React.Fragment key={player.id}>
@@ -308,7 +290,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   playerCardRotated: {
-    // Rotation handled by visual content
   },
   visualContent: {
     flex: 1,
