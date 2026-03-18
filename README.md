@@ -15,6 +15,45 @@ A mobile life counter for Magic: The Gathering, built with React Native and Expo
 - **Tools**: Settings (gear) – Flip coin, Roll dice (D4–D100 with presets and custom sides), Pause/Resume timer, Enable/disable poison counters.
 - **End game**: Game duration, pie charts (main life damage; commander damage in Commander mode; poison if enabled), per-player stats, Share summary, Rematch, New Game.
 
+## Screenshots
+
+
+## Testing without building
+
+You can try the app without doing a full native build in two ways:
+
+### Option 1: Expo Go on your phone (recommended)
+
+Runs the real app on your device with no build step.
+
+1. Install **Expo Go** on your phone: [iOS App Store](https://apps.apple.com/app/expo-go/id982107779) or [Google Play](https://play.google.com/store/apps/details?id=host.exp.exponent).
+2. On your computer, from the project folder:
+   ```bash
+   npm install
+   npm start
+   ```
+3. When the dev server starts, a **QR code** appears in the terminal (and often in the browser).
+4. **Android**: Open Expo Go and tap “Scan QR code,” then scan the code.  
+   **iOS**: Open the Camera app, point it at the QR code, and tap the banner to open in Expo Go.
+5. The app loads on your phone. Keep the computer and phone on the same Wi‑Fi network.
+
+Best for: testing on a real device with touch, orientation, and haptics as intended.
+
+### Option 2: Run in the browser (web)
+
+No app install; runs in Chrome or another browser.
+
+1. From the project folder:
+   ```bash
+   npm install
+   npm run web
+   ```
+2. When the bundler is ready, open the URL it prints (e.g. `http://localhost:8081`) in your browser.
+
+Note: On web, orientation lock and haptics don’t apply; the layout may differ from the native app. Use this for quick UI checks. For full behavior (landscape, haptics, etc.), use Expo Go or a simulator.
+
+---
+
 ## Setup
 
 1. Install dependencies:
